@@ -41,7 +41,7 @@ function App() {
       <Header /> {/* 상단 헤더 */}
       <div style={{ display: 'flex' }}>
         <Sidebar /> {/* 왼쪽 사이드바 */}
-        <div style={{ marginLeft: '250px', padding: '20px', width: '100%' }}>
+        <div style={{ marginLeft: '250px', padding: '70px 20px', width: '100%' }}>
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/demo/:id/intro" element={<DemoIntro content={demoContent} />} />

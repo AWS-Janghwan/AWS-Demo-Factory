@@ -45,20 +45,20 @@ return (
   };
 
 // 스타일 정의
-const styles = {
-  container: {
-    backgroundColor: '#ffffff', // 흰색 배경
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif',
-  },
-  markdown: {
-    whiteSpace: 'pre-wrap',
-    backgroundColor: '#ffffff', // 마크다운 배경을 흰색으로 설정
-    color: '#000000', // 마크다운 텍스트를 검정색으로 설정
-    padding: '20px',
-    borderRadius: '8px',
-  },
-};
+// const styles = {
+//   container: {
+//     backgroundColor: '#ffffff', // 흰색 배경
+//     padding: '20px',
+//     fontFamily: 'Arial, sans-serif',
+//   },
+//   markdown: {
+//     whiteSpace: 'pre-wrap',
+//     backgroundColor: '#ffffff', // 마크다운 배경을 흰색으로 설정
+//     color: '#000000', // 마크다운 텍스트를 검정색으로 설정
+//     padding: '20px',
+//     borderRadius: '8px'
+//   },
+// };
 
 export default MainPage;
 

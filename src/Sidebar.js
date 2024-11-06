@@ -24,7 +24,7 @@ const Sidebar = () => {
       </Link> */}
 
       {/* 메뉴 리스트 */}
-      <ul style={{ listStyleType: 'none', paddingLeft: '0', marginTop: '20px' }}>
+      <ul style={{ listStyleType: 'none', paddingLeft: '0', marginTop: '90px' }}>
         {demos.map(demo => (
           <li key={demo.id} style={{ marginBottom: '10px' }}>
             {/* 상위 메뉴 */}
@@ -71,6 +71,7 @@ const submenuLinkStyle = {
   color: '#ffffff',
   textDecoration: 'none',
   display: 'block',
+  paddingtop: '100px',
   paddingLeft: '10px',
   transition: 'color 0.3s ease'
 };

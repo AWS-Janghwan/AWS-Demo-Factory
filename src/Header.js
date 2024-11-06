@@ -23,10 +23,15 @@ const Header = () => {
 // 스타일 정의
 const headerStyle = {
   backgroundColor: '#232f3e',
-  padding: '10px 20px',
+  padding: '20px 20px',
   display: 'flex',
   alignItems: 'center',
-};
+  position: 'fixed', // 헤더를 고정
+  top: 0, // 페이지 상단에 고정
+  left: 0,
+  width: '100%',
+  zIndex: 1000, // 다른 요소 위에 표시되도록 설정  
+  };
 
 const logoStyle = {
   width: '50px', // 로고 크기 조정
