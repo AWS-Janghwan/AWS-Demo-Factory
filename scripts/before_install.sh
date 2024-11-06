@@ -8,7 +8,7 @@ if [ ! -d /data/AWS-Demo-Factory ]; then
 fi
 
 # 기존 파일 정리
-mv /data/AWS-Demo-Factory/* /data/bak/${TODAY}/
+mv /data/AWS-Demo-Factory /data/bak/${TODAY}/
 
 # 필요한 디렉토리 생성
 mkdir -p /data/AWS-Demo-Factory/logs
