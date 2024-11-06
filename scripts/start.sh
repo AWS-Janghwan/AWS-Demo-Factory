@@ -5,7 +5,7 @@ cd /data/AWS-Demo-Factory
 
 
 # 서버 시작
-npm run start
+nohub npm run start &
 
 # if [ "$NODE_ENV" == "production" ]; then
 #     npm run start
