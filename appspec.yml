@@ -5,7 +5,7 @@ files:
     destination: /data/AWS-Demo-Factory
 hooks:
   BeforeInstall:
-    - location: scripts/before-install.sh
+    - location: scripts/before_install.sh
       timeout: 300
       runas: root
   AfterInstall:
