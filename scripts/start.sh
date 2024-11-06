@@ -6,7 +6,7 @@ cd /data/AWS-Demo-Factory
 
 # 서버 시작
 lsof -i | grep node |kill -9 `awk '{print $2}'`
-npm run start
+nohup npm run start & | ls
 
 # if [ "$NODE_ENV" == "production" ]; then
 #     npm run start
