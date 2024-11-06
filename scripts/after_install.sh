@@ -9,11 +9,12 @@ cd /data/AWS-Demo-Factory
 # # 리액트 앱 빌드
 # npm run build
 
+# video 복사
+mkdir /data/AWS-Demo-Factory/public/source/video
+cp -r /data/video/* /data/AWS-Demo-Factory/public/source/video/
+
 # 권한 재설정
 sudo chown -R ec2-user:ec2-user /data/AWS-Demo-Factory
 sudo chmod -R 775 /data/AWS-Demo-Factory
-
-# video 복사
-cp -r /data/video/* /data/AWS-Demo-Factory/public/source/video/
 
 echo "Deployment completed successfully"

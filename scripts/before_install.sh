@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TODAY=$(date "+%Y%m%d%h%m")
+TODAY=$(date "+%Y%m%d%H%M")
 
 # 기존 파일 정리
 mv /data/AWS-Demo-Factory /data/bak/${TODAY}/
