@@ -14,7 +14,7 @@ mkdir /data/AWS-Demo-Factory/public/source/video
 cp -r /data/video/* /data/AWS-Demo-Factory/public/source/video/
 
 # 권한 재설정
-sudo chown -R ec2-user:ec2-user /data/AWS-Demo-Factory
+sudo chown -R root:ec2-user /data/AWS-Demo-Factory
 sudo chmod -R 775 /data/AWS-Demo-Factory
 
 echo "Deployment completed successfully"
