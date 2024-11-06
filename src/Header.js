@@ -40,7 +40,7 @@ const logoStyle = {
 
 const titleStyle = {
   color: '#ffffff', // 흰색 텍스트
-  fontSize: '24px',
+  fontSize: '40px',
   margin: 0,
 };
 

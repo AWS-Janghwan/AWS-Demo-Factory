@@ -27,5 +27,5 @@ yarn-error.log*
 
 # folder
 /241104
-
+/node_modules
 node_modules/.cache

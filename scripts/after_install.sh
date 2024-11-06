@@ -4,7 +4,7 @@
 cd /data/AWS-Demo-Factory
 
 # # npm 패키지 설치
-# npm install
+npm install
 
 # # 리액트 앱 빌드
 # npm run build
