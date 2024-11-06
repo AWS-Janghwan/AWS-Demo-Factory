@@ -2,6 +2,7 @@
 
 # dependencies
 /public/source/video/
+/bak
 
 # testing
 /coverage
