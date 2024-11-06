@@ -1,0 +1,11 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /data/AWS-Demo-Factory
+hooks:
+  start:
+    - location: scripts/start.sh
+      timeout: 300
+      runas: root
+  
