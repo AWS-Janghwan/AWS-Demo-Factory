@@ -8,6 +8,7 @@ cd /data/AWS-Demo-Factory
 lsof -i | grep node |kill -9 `awk '{print $2}'`
 nohup npm run start & 
 sleep 10
+echo "Deployment completed successfully."
 
 # if [ "$NODE_ENV" == "production" ]; then
 #     npm run start
