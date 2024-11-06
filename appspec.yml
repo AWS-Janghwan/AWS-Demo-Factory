@@ -4,7 +4,7 @@ files:
   - source: /
     destination: /data/AWS-Demo-Factory
 hooks:
-  start:
+  AfterInstall:
     - location: scripts/start.sh
       timeout: 300
       runas: root
