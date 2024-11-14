@@ -3,10 +3,15 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MainPage from './MainPage';
-import DemoIntro from './DemoIntro';
-import DemoVideo from './DemoVideo';
-import DemoArchitecture from './DemoArchitecture';
-import DemoCode from './DemoCode';
+import DemoIntro from './menu/DemoIntro';
+import DemoVideo from './menu/DemoVideo';
+import DemoArchitecture from './menu/DemoArchitecture';
+import DemoCode from './menu/DemoCode';
+
+import SmartFactoryIntro from './menu/SmartFactoryIntro';
+import SmartFactoryVideo from './menu/SmartFactoryVideo';
+import SmartFactoryArchitecture from './menu/SmartFactoryArchitecture';
+// import SmartFactoryCode from './SmartFactoryCode';
 
 // 데모 컨텐츠 데이터 정의
 const demoContent = {
@@ -23,6 +28,15 @@ const demoContent = {
         code: '# Code\n```javascript\nconsole.log("AVEVA Historian Demo");\n```'
     }
 };
+
+const smartFactoryContent = {
+    1: {intro: '# Smart Factory Demo \n\n This is Smart Factory Demo',
+    videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/smart-factory-demo.mp4',
+    architecture: '# Smart Factory Architecture\n![Architecture](https://via.placeholder.com/150)',
+    code: '# Code\n```javascript\nconsole.log("Smart Factory Demo");\n```'
+    }
+};
+
 
 function App() {
     const [activeMenu, setActiveMenu] = useState('GenAI'); // 초기값을 GenAI로 설정
@@ -48,7 +62,7 @@ function App() {
                             { title: 'Introduction', path: '/demo/1/intro' },
                             { title: 'Video', path: '/demo/1/video' },
                             { title: 'Architecture', path: '/demo/1/architecture' },
-                            { title: 'Code', path: '/demo/1/code' }
+                            // { title: 'Code', path: '/demo/1/code' }
                         ]
                     },
                     {
@@ -57,7 +71,7 @@ function App() {
                             { title: 'Introduction', path: '/demo/2/intro' },
                             { title: 'Video', path: '/demo/2/video' },
                             { title: 'Architecture', path: '/demo/2/architecture' },
-                            { title: 'Code', path: '/demo/2/code' }
+                            // { title: 'Code', path: '/demo/2/code' }
                         ]
                     }
                 ]);
@@ -65,16 +79,17 @@ function App() {
             case 'SmartFactory':
                 setSidebarItems([
                     {
-                        title: 'Smart Factory Demo',
+                        title: 'DDI Demo',
                         subItems: [
-                            { title: 'Introduction', path: '/aveva-demo/intro' },
-                            { title: 'Video', path: '/aveva-demo/video' },
-                            { title: 'Architecture', path: '/aveva-demo/architecture' },
-                            { title: 'Code', path: '/aveva-demo/code' }
+                            { title: 'Introduction', path: '/SmartFactory/intro' },
+                            { title: 'Video', path: '/SmartFactory/video' },
+                            { title: 'Architecture', path: '/SmartFactory/architecture' },
+                            // { title: 'Code', path: '/SmartFactory/code' }
                         ]
                     }
                 ]);
                 break;
+
             case 'contact':
                 setSidebarItems([
                     {
@@ -105,6 +120,13 @@ function App() {
                         <Route path="/demo/:id/architecture" element={<DemoArchitecture content={demoContent} />} />
                         <Route path="/demo/:id/code" element={<DemoCode content={demoContent} />} />
                         <Route path="/aveva-demo/*" element={<DemoIntro content={demoContent} />} />
+                          
+                          {/* SmartFactory 라우트 추가 */}
+                        <Route path="/SmartFactory/intro" element={<SmartFactoryIntro content={smartFactoryContent} />} />
+                        <Route path="/SmartFactory/video" element={<SmartFactoryVideo />} />
+                        <Route path="/SmartFactory/architecture" element={<SmartFactoryArchitecture />} />
+                        {/* <Route path="/SmartFactory/code" element={<SmartFactoryCode />} /> */}
+
                         <Route path="/contact/*" element={<MainPage />} />
                     </Routes>
                 </div>

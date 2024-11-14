@@ -16,6 +16,9 @@ const Header = ({ onMenuSelect }) => {
         onMenuSelect(menuId);
     };
 
+
+
+    
     return (
         <header style={headerStyle}>
             <table>
@@ -27,6 +30,7 @@ const Header = ({ onMenuSelect }) => {
                 />
                 <h1 style={titleStyle}>AWS Demo Factory</h1>
             </Link>
+
             
             <nav style={navStyle}>
                 <ul style={menuListStyle}>

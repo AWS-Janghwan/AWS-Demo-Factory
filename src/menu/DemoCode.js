@@ -11,7 +11,7 @@ const DemoCode = () => {
 
   useEffect(() => {
     // 해당 데모의 마크다운 파일 경로
-    const markdownFilePath = `/page/code/${id}_code.md`;
+    const markdownFilePath = `/page/GenAI/code/${id}_code.md`;
 
     // 마크다운 파일 fetch
     fetch(markdownFilePath)

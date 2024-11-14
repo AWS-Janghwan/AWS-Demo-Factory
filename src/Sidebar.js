@@ -63,7 +63,7 @@ const sidebarStyle = {
     position: 'fixed',
     height: '100%',
     color: '#fff',
-    paddingTop: '120px',
+    paddingTop: '125px',
 };
 
 const menuListStyle = {

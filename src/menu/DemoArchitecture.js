@@ -10,7 +10,7 @@ const DemoArchitecture = () => {
 
   useEffect(() => {
     // 해당 데모의 비디오 관련 마크다운 파일 경로
-    const markdownFilePath = `/page/architecture/${id}_arc.md`;
+    const markdownFilePath = `/page/GenAI/architecture/${id}_arc.md`;
 
     // 마크다운 파일 fetch
     fetch(markdownFilePath)

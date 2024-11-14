@@ -9,7 +9,7 @@ const DemoVideo = () => {
 
   useEffect(() => {
     // 해당 데모의 마크다운 파일 경로
-    const markdownFilePath = `/page/video/${id}_video.md`;
+    const markdownFilePath = `/page/GenAI/video/${id}_video.md`;
 
     // 마크다운 파일 fetch
     fetch(markdownFilePath)
