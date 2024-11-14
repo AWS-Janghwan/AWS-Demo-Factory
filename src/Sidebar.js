@@ -1,79 +1,107 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = () => {
-  const [openDemo, setOpenDemo] = useState(null);
+const Sidebar = ({ items }) => {
+    const [openItem, setOpenItem] = useState(null); // 단일 메뉴만 열리도록 수정
+    const location = useLocation();
 
-  // 데모 목록 정의
-  const demos = [
-    { id: 1, name: 'MES Chatbot' },
-    { id: 2, name: 'AVEVA Demo' },
-    // { id: 3, name: 'Test' },
-  ];
+    const toggleItem = (index) => {
+        setOpenItem(openItem === index ? null : index);
+    };
 
-  // 서브메뉴 토글 함수
-  const toggleSubmenu = (id) => {
-    setOpenDemo(openDemo === id ? null : id);
-  };
+    // 현재 활성화된 경로 확인
+    const isActiveSubItem = (path) => {
+        return location.pathname === path;
+    };
 
-  return (
-    <div style={{ width: '250px', backgroundColor: '#232f3e', position: 'fixed', height: '100%', color: '#fff' }}>
-      {/* 상단에 "Home" 텍스트 추가 */}
-      {/* <Link to="/" className="home-link" style={{ display: 'block', padding: '20px', textAlign: 'left', color: '#fff', fontSize: '18px', fontWeight: 'bold', textDecoration: 'none' }}>
-        Home
-      </Link> */}
-
-      {/* 메뉴 리스트 */}
-      <ul style={{ listStyleType: 'none', paddingLeft: '0', marginTop: '90px' }}>
-        {demos.map(demo => (
-          <li key={demo.id} style={{ marginBottom: '10px' }}>
-            {/* 상위 메뉴 */}
-            <div 
-              onClick={() => toggleSubmenu(demo.id)} 
-              style={{
-                cursor: 'pointer',
-                padding: '10px 20px',
-                backgroundColor: openDemo === demo.id ? '#4f52ba' : '#232f3e',
-                color: '#fff',
-                fontWeight: openDemo === demo.id ? 'bold' : 'normal',
-                transition: 'background-color 0.3s ease'
-              }}
-            >
-              {demo.name}
-            </div>
-
-            {/* 서브메뉴 */}
-            {openDemo === demo.id && (
-              <ul style={{ listStyleType: 'none', paddingLeft: '20px', backgroundColor: '#1b2735' }}>
-                <li style={{ paddingTop: '5px', paddingBottom: '5px' }}>
-                  <Link to={`/demo/${demo.id}/intro`} style={submenuLinkStyle}>Introduction</Link>
-                </li>
-                <li style={{ paddingTop: '5px', paddingBottom: '5px' }}>
-                  <Link to={`/demo/${demo.id}/video`} style={submenuLinkStyle}>Video</Link>
-                </li>
-                <li style={{ paddingTop: '5px', paddingBottom: '5px' }}>
-                  <Link to={`/demo/${demo.id}/architecture`} style={submenuLinkStyle}>Architecture</Link>
-                </li>
-                <li style={{ paddingTop: '5px', paddingBottom: '5px' }}>
-                  <Link to={`/demo/${demo.id}/code`} style={submenuLinkStyle}>Code</Link>
-                </li>
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div style={sidebarStyle}>
+            <ul style={menuListStyle}>
+                {items.map((item, index) => (
+                    <li key={index} style={menuItemStyle}>
+                        <div 
+                            onClick={() => toggleItem(index)}
+                            style={{
+                                ...menuTitleStyle,
+                                backgroundColor: openItem === index ? '#4f52ba' : '#232f3e',
+                                fontWeight: openItem === index ? 'bold' : 'normal',
+                            }}
+                        >
+                            {item.title}
+                        </div>
+                        {item.subItems && (
+                            <ul style={{
+                                ...subMenuListStyle,
+                                display: openItem === index ? 'block' : 'none'
+                            }}>
+                                {item.subItems.map((subItem, subIndex) => (
+                                    <li key={subIndex}>
+                                        <Link 
+                                            to={subItem.path}
+                                            style={{
+                                                ...subMenuItemStyle,
+                                                backgroundColor: isActiveSubItem(subItem.path) ? '#4f52ba' : 'transparent',
+                                                fontWeight: isActiveSubItem(subItem.path) ? 'bold' : 'normal',
+                                            }}
+                                        >
+                                            {subItem.title}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-// 서브메뉴 링크 스타일
-const submenuLinkStyle = {
-  color: '#ffffff',
-  textDecoration: 'none',
-  display: 'block',
-  paddingtop: '100px',
-  paddingLeft: '10px',
-  transition: 'color 0.3s ease'
+const sidebarStyle = {
+    width: '220px',
+    backgroundColor: '#232f3e',
+    position: 'fixed',
+    height: '100%',
+    color: '#fff',
+    paddingTop: '120px',
+};
+
+const menuListStyle = {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+};
+
+const menuItemStyle = {
+    marginBottom: '2px',
+};
+
+const menuTitleStyle = {
+    padding: '12px 20px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    ':hover': {
+        backgroundColor: '#4f52ba',
+    },
+};
+
+const subMenuListStyle = {
+    listStyle: 'none',
+    padding: '0',
+    backgroundColor: '#1b2735',
+    transition: 'all 0.3s ease',
+};
+
+const subMenuItemStyle = {
+    color: '#ffffff',
+    textDecoration: 'none',
+    padding: '10px 32px',
+    display: 'block',
+    fontSize: '14px',
+    transition: 'background-color 0.3s ease',
+    ':hover': {
+        backgroundColor: '#4f52ba',
+    },
 };
 
 export default Sidebar;
