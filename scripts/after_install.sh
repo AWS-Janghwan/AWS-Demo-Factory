@@ -7,7 +7,7 @@ cd /data/AWS-Demo-Factory
 npm install
 
 # # 리액트 앱 빌드
-# npm run build
+npm run build
 
 # video 복사
 mkdir /data/AWS-Demo-Factory/public/source/video
