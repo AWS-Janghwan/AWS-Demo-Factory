@@ -10,7 +10,6 @@ nohup npm run start &
 sleep 10
 echo "Deployment completed successfully."
 
-sh deploy.sh
 
 # if [ "$NODE_ENV" == "production" ]; then
 #     npm run start

@@ -16,7 +16,7 @@ import SmartFactoryArchitecture from './menu/SmartFactoryArchitecture';
 // 데모 컨텐츠 데이터 정의
 const demoContent = {
     1: {
-        intro: '# MES Chatbot Demo \n\n This is MES Chatbot Demo',
+        intro2: '# MES Chatbot Demo \n\n This is MES Chatbot Demo',
         videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/aws-demo.mp4',
         architecture: '# MES Chatbot Architecture\n![Architecture](https://via.placeholder.com/150)',
         code: '# Code\n```javascript\nconsole.log("MES Chatbot Demo");\n```'
