@@ -22,4 +22,4 @@ cd /data/AWS-Demo-Factory
 #     npm run start
 # else
 #     npm run dev
-# fi 
+# fi
