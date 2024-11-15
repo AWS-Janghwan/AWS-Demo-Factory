@@ -17,4 +17,8 @@ mkdir -p /data/AWS-Demo-Factory/logs
 sudo chown -R root:ec2-user /data/AWS-Demo-Factory
 sudo chmod -R 755 /data/AWS-Demo-Factory
 
+# pm2 설치
+npm install pm2 -g
+
+# pm2 종료
 pm2 kill all

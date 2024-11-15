@@ -3,11 +3,10 @@
 # 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
 
-# pm2 설치
-npm install pm2 -g
+
 
 # React 앱 시작
-pm2 start ./node_modules/react-scripts/scripts/start.js --name "react-app" --watch
+pm2 start ./node_modules/react-scripts/scripts/start.js --name "demo-factory" --watch
 
 
 
