@@ -8,7 +8,7 @@ cd /data/AWS-Demo-Factory
 # React 앱 시작
 pm2 start ./node_modules/react-scripts/scripts/start.js --name "demo-factory" --watch
 
-
+pm2 restart
 
 # 기존 서버 stop(kill)
 # lsof -i | grep node |kill -9 `awk '{print $2}'`

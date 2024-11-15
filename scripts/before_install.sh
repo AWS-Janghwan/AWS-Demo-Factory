@@ -21,4 +21,4 @@ sudo chmod -R 755 /data/AWS-Demo-Factory
 npm install pm2 -g
 
 # pm2 종료
-pm2 kill
+# pm2 kill
