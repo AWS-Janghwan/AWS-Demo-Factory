@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# 필요 패키지 설치
+#yum -y install nfs-utils
+#yum -y install nfs-utils nfs4-acl-tools
+
+# EFS 사용 환경 설정
+#mkdir /data
+#echo "/data *(rw,sync,no_root_squash)" >> /etc/exports #172.31 대역의 접근 허용
+#systemctl restart nfs-server.service
+#systemctl enable nfs-server.service
+
+#mount -t nfs 172.31.2.191:/backup /backup
+#echo "172.31.2.191:/backup /data nfs defaults 0 0">>/etc/fstab
+
 # 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
 
