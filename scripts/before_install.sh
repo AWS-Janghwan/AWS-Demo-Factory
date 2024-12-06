@@ -5,7 +5,7 @@
 # 기존 파일 정리 (백업)
 # TODAY=$(date "+%Y%m%d%H%M")
 # mv /data/AWS-Demo-Factory /data/bak/${TODAY}/
-rm -rf /data/AWS-Demo-Factory
+rm -rf /data/AWS-Demo-Factory/
 
 # 애플리케이션 디렉토리 생성
 if [ ! -d /data/AWS-Demo-Factory ]; then
