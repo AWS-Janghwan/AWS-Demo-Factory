@@ -23,7 +23,10 @@ npm install
 npm run build
 
 # video 복사
-mkdir /data/AWS-Demo-Factory/public/source/video
+if [ ! -d /data/AWS-Demo-Factory/public/source/video ]; then
+    mkdir -p /data/AWS-Demo-Factory/public/source/video
+fi
+# mkdir /data/AWS-Demo-Factory/public/source/video
 cp -r /data/video/* /data/AWS-Demo-Factory/public/source/video/
 
 # 권한 재설정
