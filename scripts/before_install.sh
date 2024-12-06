@@ -13,7 +13,7 @@ if [ ! -d /data/AWS-Demo-Factory ]; then
 fi
 
 # 필요한 디렉토리 생성
-mkdir -p /data/AWS-Demo-Factory/logs
+# mkdir -p /data/AWS-Demo-Factory/logs
 
 # 권한 설정
 sudo chown -R root:ec2-user /data/AWS-Demo-Factory
