@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #서비스 중지
-sudo /usr/local/bin/pm2 stop all
+sudo /usr/local/bin/pm2 kil
 
 # 기존 파일 정리 (백업)
 # TODAY=$(date "+%Y%m%d%H%M")
