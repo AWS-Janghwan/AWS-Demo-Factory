@@ -21,7 +21,7 @@ cd /data/AWS-Demo-Factory
 npm install --force
 
 # # 리액트 앱 빌드
-# npm run build
+npm run build
 
 # video 복사
 if [ ! -d /data/AWS-Demo-Factory/public/source/video ]; then
