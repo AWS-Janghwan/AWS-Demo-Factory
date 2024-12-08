@@ -1,6 +1,7 @@
 #!/bin/bash
 
-
+#서비스 중지
+sudo /usr/local/bin/pm2 stop all
 
 # 기존 파일 정리 (백업)
 # TODAY=$(date "+%Y%m%d%H%M")
@@ -19,12 +20,12 @@ fi
 #sudo chown -R root:ec2-user /data/AWS-Demo-Factory
 #sudo chmod -R 755 /data/AWS-Demo-Factory
 
-# pm2 설치
-npm install pm2 -g
+# # pm2 설치
+# npm install pm2 -g
 
-# pm2 종료
-sudo /usr/local/bin/pm2 kill
+# # pm2 종료
+# sudo /usr/local/bin/pm2 kill
 
-# 기존 서버 stop(kill)
-lsof -i | grep node |kill -9 `awk '{print $2}'`
+# # 기존 서버 stop(kill)
+# lsof -i | grep node |kill -9 `awk '{print $2}'`
 

@@ -14,6 +14,7 @@
 #echo "172.31.2.191:/backup /data nfs defaults 0 0">>/etc/fstab
 
 # 애플리케이션 디렉토리로 이동
+
 cd /data/AWS-Demo-Factory
 
 # # npm 패키지 설치
