@@ -1,12 +1,13 @@
 # Historian 데모 영상
 
 <video width="1024" controls>
-  <source src="/source/video/GenAI_Aveva_PI.mp3" type="video/mp4">
+  <source src="../../../source/video/GenAI_Aveva_PI.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
+<br>
 
-## 데모 시나리오
+# 데모 시나리오
 1. 제조 현장의 히스토리안 서버에서 발생하는 데이터를 실시간으로 AWS 클라우드로 전송
 
 2. Amazon MSK와 Telegraf를 통해 데이터를 Timestream으로 전송하여 실시간 모니터링

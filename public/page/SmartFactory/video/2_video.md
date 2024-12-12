@@ -1,10 +1,11 @@
-# Smart_Fire_Detection_Reporting 데모 영상
-
+# Smart Fire Detection & Reporting 데모
+<br>
 <video width="1024" controls>
-  <source src="public/source/video/SF_Smart_Fire_Detection_Reporting.mp4" type="video/mp4">
+  <source src="../../../source/video/Smart_Fire_Detection_Reporting.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
+<br><br>
 
 ## 데모 시나리오
  1. CCTV로 화재 상황 촬영

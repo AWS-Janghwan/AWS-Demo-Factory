@@ -6,7 +6,7 @@ import MainPage from './MainPage';
 import DemoIntro from './menu/DemoIntro';
 import DemoVideo from './menu/DemoVideo';
 import DemoArchitecture from './menu/DemoArchitecture';
-import DemoCode from './menu/DemoCode';
+// import DemoCode from './menu/DemoCode';
 
 import SmartFactoryIntro from './menu/SmartFactoryIntro';
 import SmartFactoryVideo from './menu/SmartFactoryVideo';
@@ -34,7 +34,12 @@ const smartFactoryContent = {
     videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/smart-factory-demo.mp4',
     architecture: '# Smart Factory Architecture\n![Architecture](https://via.placeholder.com/150)',
     code: '# Code\n```javascript\nconsole.log("Smart Factory Demo");\n```'
-    }
+    },
+    2: {intro: '# Smart Factory Demo \n\n This is Smart Factory Demo',
+        videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/smart-factory-demo.mp4',
+        architecture: '# Smart Factory Architecture\n![Architecture](https://via.placeholder.com/150)',
+        code: '# Code\n```javascript\nconsole.log("Smart Factory Demo");\n```'
+        }
 };
 
 
@@ -79,11 +84,20 @@ function App() {
             case 'SmartFactory':
                 setSidebarItems([
                     {
-                        title: 'DDI Demo',
+                        title: 'DDI EDS Demo',
                         subItems: [
-                            { title: 'Introduction', path: '/SmartFactory/intro' },
-                            { title: 'Video', path: '/SmartFactory/video' },
-                            { title: 'Architecture', path: '/SmartFactory/architecture' },
+                            { title: 'Introduction', path: '/SmartFactory/1/intro' },
+                            { title: 'Video', path: '/SmartFactory/1/video' },
+                            { title: 'Architecture', path: '/SmartFactory/1/architecture' },
+                            // { title: 'Code', path: '/SmartFactory/code' }
+                        ]
+                    },
+                    {
+                        title: 'Fire Detection',
+                        subItems: [
+                            { title: 'Introduction', path: '/SmartFactory/2/intro' },
+                            { title: 'Video', path: '/SmartFactory/2/video' },
+                            { title: 'Architecture', path: '/SmartFactory/2/architecture' },
                             // { title: 'Code', path: '/SmartFactory/code' }
                         ]
                     }
@@ -118,13 +132,13 @@ function App() {
                         <Route path="/demo/:id/intro" element={<DemoIntro content={demoContent} />} />
                         <Route path="/demo/:id/video" element={<DemoVideo content={demoContent} />} />
                         <Route path="/demo/:id/architecture" element={<DemoArchitecture content={demoContent} />} />
-                        <Route path="/demo/:id/code" element={<DemoCode content={demoContent} />} />
-                        <Route path="/aveva-demo/*" element={<DemoIntro content={demoContent} />} />
+                        {/* <Route path="/demo/:id/code" element={<DemoCode content={demoContent} />} />
+                        <Route path="/aveva-demo/*" element={<DemoIntro content={demoContent} />} /> */}
                           
                           {/* SmartFactory 라우트 추가 */}
-                        <Route path="/SmartFactory/intro" element={<SmartFactoryIntro content={smartFactoryContent} />} />
-                        <Route path="/SmartFactory/video" element={<SmartFactoryVideo />} />
-                        <Route path="/SmartFactory/architecture" element={<SmartFactoryArchitecture />} />
+                        <Route path="/SmartFactory/:id/intro" element={<SmartFactoryIntro content={smartFactoryContent} />} />
+                        <Route path="/SmartFactory/:id/video" element={<SmartFactoryVideo content={smartFactoryContent} />} />
+                        <Route path="/SmartFactory/:id/architecture" element={<SmartFactoryArchitecture content={smartFactoryContent} />} />
                         {/* <Route path="/SmartFactory/code" element={<SmartFactoryCode />} /> */}
 
                         <Route path="/contact/*" element={<MainPage />} />

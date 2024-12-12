@@ -2,11 +2,11 @@
 
 <!-- ![alt text](../../source/img/1_arc.png) -->
 
-<img src="../../source/img/1_arc.png" width="1200">
+<img src="../../source/img/GenAI_1_arc.png" width="1200">
 
 
 
-## Architecture 설명
+# Architecture 설명
  1. 데이터베이스 스키마가 DB에서 검색되어 프롬프트에 입력
 
  2. 사용자가 MES에 저장된 운영 데이터에 접근해야만 답변할 수 있는 질의 수행

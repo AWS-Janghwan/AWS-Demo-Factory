@@ -15,7 +15,8 @@ AI는 조기 감지와 신속한 의사소통을 통해 초기 대응 시간을 
 <br><br>
 
 <!-- 데모를 소개할 수 있는 컨셉이나 플로우가 들어갈만한 이미지를 넣어주세요 -->
-<img src="/source/Demo.png" width="1024">
+<!-- <img src="./2_intro.png" width="1024"> -->
+<img src="../../../source/img/SF_2_intro.png" width="1024">
 
 <br><br>
 

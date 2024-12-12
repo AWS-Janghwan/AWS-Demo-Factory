@@ -2,11 +2,11 @@
 
 <!-- ![alt text](../../source/img/1_arc.png) -->
 
-<img src="../../source/img/2_arc.png" width="1200">
+<img src="../../source/img/GenAI_2_arc.png" width="1200">
 
 
 
-## Architecture 설명
+# Architecture 설명
 1. 제조 현장의 히스토리안 서버에서 발생하는 데이터를 실시간으로 AWS 클라우드로 전송
 
 2. Amazon MSK와 Telegraf를 통해 데이터를 Timestream으로 전송하여 실시간 모니터링

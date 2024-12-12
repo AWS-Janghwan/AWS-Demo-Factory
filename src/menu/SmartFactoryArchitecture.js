@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import { useParams } from 'react-router-dom';
 
 const SmartFactoryArchitecture = () => {
+    const { id } = useParams(); // URL에서 id를 가져옴
     const [content, setContent] = useState('');
 
     useEffect(() => {
-        const markdownFilePath = `/page/SmartFactory/architecture/1_arc.md`;
+        const markdownFilePath = `/page/SmartFactory/architecture/${id}_arc.md`;
 
         fetch(markdownFilePath)
             .then((res) => res.text())
