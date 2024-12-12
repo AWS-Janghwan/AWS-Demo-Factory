@@ -1,7 +1,7 @@
 # Smart Fire Detection & Reporting 데모
 <br>
-<video width="1024" controls>
-  <source src="../../source/video/Smart_Fire_Detection_Reporting.mp4" type="video/mp4">
+<video width="1024" controls preload="auto">
+  <source src="../../source/movie/SF_Smart_Fire_Detection_Reporting.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 

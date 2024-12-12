@@ -24,11 +24,11 @@ npm install --force
 npm run build
 
 # video 복사
-if [ ! -d /data/AWS-Demo-Factory/public/source/video ]; then
-    mkdir -p /data/AWS-Demo-Factory/public/source/video
+if [ ! -d /data/AWS-Demo-Factory/public/source/movie ]; then
+    mkdir -p /data/AWS-Demo-Factory/public/source/movie
 fi
 # mkdir /data/AWS-Demo-Factory/public/source/video
-cp -r /data/video/* /data/AWS-Demo-Factory/public/source/video/
+cp -r /data/video/* /data/AWS-Demo-Factory/public/source/movie/
 
 # 권한 재설정
 #sudo chown -R root:ec2-user /data/AWS-Demo-Factory
