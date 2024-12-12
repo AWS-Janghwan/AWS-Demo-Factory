@@ -57,7 +57,8 @@ const Header = ({ onMenuSelect }) => {
                         <span style={menuItemStyle}>Smart Factory</span>
                         {activeDropdown === 'SmartFactory' && (
                             <ul style={dropdownStyle}>
-                                <li><Link to="/SmartFactory-demo/intro" style={dropdownItemStyle}>DDI Demo</Link></li>
+                                <li><Link to="/SmartFactory-demo/1/intro" style={dropdownItemStyle}>DDI Demo</Link></li>
+                                <li><Link to="/SmartFactory-demo/2/intro" style={dropdownItemStyle}>Fire Detection</Link></li>
                                 
                             </ul>
                         )}

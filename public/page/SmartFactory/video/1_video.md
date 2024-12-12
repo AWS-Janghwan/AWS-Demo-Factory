@@ -1,16 +1,16 @@
 # MES Chatbot 데모 영상
 
 <video width="1024" controls>
-  <source src="/source/video/MES-chat-demo.mp4" type="video/mp4">
+  <source src="/public/source/video/SF_DDI.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
 
 ## 데모 시나리오
- 1. 사용자가 챗봇 데모 웹페이지에 접속
+ 1. CCTV로 화재 상황 촬영
 
- 2. 제공되는 샘플 질문이나 제조 관련 질문을 실행
+ 2. 실시간 스트리밍 + GenAI를 바탕으로 현장 상황 자연어 요약
 
- 3. SQL 기반으로 MES 데이터를 검색하고 결과를 정리
+ 3. 현장 담당자와 의사소통을 통해 보고서 작성을 위한 정보 확보
 
- 4. 챗봇 화면에 조회된 MES 데이터와 결과를 출력
+ 4. 보고서 자동 생성 및 담당자에게 발송

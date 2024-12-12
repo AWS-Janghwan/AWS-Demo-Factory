@@ -1,23 +1,16 @@
-# Historian 데모 영상
+# Smart_Fire_Detection_Reporting 데모 영상
 
 <video width="1024" controls>
-  <source src="/source/video/aveva-pi-demo.mp4" type="video/mp4">
+  <source src="public/source/video/SF_Smart_Fire_Detection_Reporting.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
 
 ## 데모 시나리오
-1. 제조 현장의 히스토리안 서버에서 발생하는 데이터를 실시간으로 AWS 클라우드로 전송
+ 1. CCTV로 화재 상황 촬영
 
-2. Amazon MSK와 Telegraf를 통해 데이터를 Timestream으로 전송하여 실시간 모니터링
+ 2. 실시간 스트리밍 + GenAI를 바탕으로 현장 상황 자연어 요약
 
-3. Amazon Managed Grafana에서 수집된 데이터를 시각화하여 실시간 장비 상태와 공정 데이터를 확인
+ 3. 현장 담당자와 의사소통을 통해 보고서 작성을 위한 정보 확보
 
-4. 히스토리안 데이터는 Amazon S3에 저장되고, AWS Glue와 Athena를 통해 분석 가능한 데이터 세트로 변환
-
-5. Athena와 QuickSight를 통해 데이터 시각화와 보고서를 생성하여 사용자가 직관적으로 데이터를 분석
-
-
-
-
-
+ 4. 보고서 자동 생성 및 담당자에게 발송

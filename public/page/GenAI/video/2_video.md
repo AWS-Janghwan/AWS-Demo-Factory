@@ -1,7 +1,7 @@
 # Historian 데모 영상
 
 <video width="1024" controls>
-  <source src="/source/video/aveva-pi-demo.mp4" type="video/mp4">
+  <source src="/source/video/GenAI_Aveva_PI.mp3" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
