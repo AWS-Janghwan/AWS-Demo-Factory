@@ -16,14 +16,14 @@ import SmartFactoryArchitecture from './menu/SmartFactoryArchitecture';
 // 데모 컨텐츠 데이터 정의
 const demoContent = {
     1: {
-        intro2: '# MES Chatbot Demo \n\n This is MES Chatbot Demo',
-        videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/aws-demo.mp4',
+        intro: '# MES Chatbot Demo \n\n This is MES Chatbot Demo',
+        videoUrl: '/source/movie/GenAI_MES-Chatbot.mp4',
         architecture: '# MES Chatbot Architecture\n![Architecture](https://via.placeholder.com/150)',
         code: '# Code\n```javascript\nconsole.log("MES Chatbot Demo");\n```'
     },
     2: {
         intro: '# AVEVA Historian Demo \n\n This is AVEVA Historian Demo',
-        videoUrl: 'https://aws-demo-factory.s3.us-west-2.amazonaws.com/aws-demo.mp4',
+        videoUrl: '/source/movie/GenAI_Aveva_PI.mp4',
         architecture: '# AVEVA Historian Architecture\n![Architecture](https://via.placeholder.com/150)',
         code: '# Code\n```javascript\nconsole.log("AVEVA Historian Demo");\n```'
     }

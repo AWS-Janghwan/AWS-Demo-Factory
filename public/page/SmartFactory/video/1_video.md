@@ -1,7 +1,7 @@
 # DDI EDS 데모 영상
 
-<video width="1024" controls preload="auto">
-  <source src="/public/source//movie/SF_DDI.mp4" type="video/mp4">
+<video width="1024" controls>
+   <source src="/source//movie/SF_DDI.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
 
