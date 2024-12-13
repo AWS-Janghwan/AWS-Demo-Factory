@@ -13,8 +13,14 @@
 #mount -t nfs 172.31.2.191:/backup /backup
 #echo "172.31.2.191:/backup /data nfs defaults 0 0">>/etc/fstab
 
-# 애플리케이션 디렉토리로 이동
+# video 복사
+if [ ! -d /data/AWS-Demo-Factory/public/source/movie ]; then
+    mkdir -p /data/AWS-Demo-Factory/public/source/movie
+fi
+# mkdir /data/AWS-Demo-Factory/public/source/video
+yes | cp -r /data/video/* /data/AWS-Demo-Factory/public/source/movie/
 
+# 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
 
 # # npm 패키지 설치
@@ -23,12 +29,7 @@ npm install --force
 # # 리액트 앱 빌드
 npm run build
 
-# video 복사
-if [ ! -d /data/AWS-Demo-Factory/public/source/movie ]; then
-    mkdir -p /data/AWS-Demo-Factory/public/source/movie
-fi
-# mkdir /data/AWS-Demo-Factory/public/source/video
-cp -r /data/video/* /data/AWS-Demo-Factory/public/source/movie/
+
 
 # 권한 재설정
 #sudo chown -R root:ec2-user /data/AWS-Demo-Factory
