@@ -1,9 +1,8 @@
 # MES Chatbot 데모 영상
 
-<video width="1024" contols>
-    <source src="/source/movie/GenAI_MES-Chatbot.mp4" type="video/mp4" />
-  
-    Your browser does not support the video tag.
+<video width="1024" controls>
+      <source src="/source/movie/GenAI_MES-Chatbot.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
 </video>
 
 
