@@ -35,4 +35,4 @@ npm run build
 #sudo chown -R root:ec2-user /data/AWS-Demo-Factory
 #sudo chmod -R 775 /data/AWS-Demo-Factory
 
-echo "Deployment completed successfully"
+echo "Deployment completed successfully" 
