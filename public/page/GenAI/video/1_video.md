@@ -1,10 +1,13 @@
 # MES Chatbot 데모 영상
 
-<video width="1024" controls>
+<!-- <video width="1024" controls>
   <source src="/source/movie/GenAI_MES-Chatbot.mp4" type="video/mp4">
   Your browser does not support the video tag.
+</video> -->
+<video width="1024" controls>
+    <source src="/source/movie/GenAI_MES-Chatbot.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
 </video>
-
 
 # 데모 시나리오
  1. 사용자가 챗봇 데모 웹페이지에 접속
