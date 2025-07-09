@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import { 
   CognitoUserPool, 
   CognitoUser, 
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   // 컴포넌트 마운트 시 현재 사용자 확인
   useEffect(() => {
     checkCurrentUser();
-  }, []);
+  }, [checkCurrentUser]);
 
   // 사용자 그룹 정보 가져오기
   const getUserGroups = async (username) => {
@@ -548,7 +548,7 @@ export const AuthProvider = ({ children }) => {
   // 로그인 상태 확인
   const isAuthenticated = () => !!user;
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
     error,
@@ -567,7 +567,7 @@ export const AuthProvider = ({ children }) => {
     checkCurrentUser,
     // 사용자 역할 상수
     USER_ROLES
-  };
+  }), [user, loading, error, needsNewPassword]);
 
   // 디버깅을 위한 전역 접근 설정
   useEffect(() => {

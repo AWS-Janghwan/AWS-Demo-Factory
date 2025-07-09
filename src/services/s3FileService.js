@@ -77,7 +77,6 @@ const getFileType = (extension) => {
     // 비디오
     'mp4': 'video/mp4',
     'webm': 'video/webm',
-    'ogg': 'video/ogg',
     'avi': 'video/avi',
     'mov': 'video/quicktime',
     
@@ -135,8 +134,10 @@ export const checkS3FileExists = async (key) => {
   }
 };
 
-export default {
+const s3FileService = {
   getS3Files,
   getS3FileUrl,
   checkS3FileExists
 };
+
+export default s3FileService;

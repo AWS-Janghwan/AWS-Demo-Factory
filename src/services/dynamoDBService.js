@@ -182,7 +182,7 @@ export const getContentsByCategory = async (category) => {
   }
 };
 
-export default {
+const dynamoDBService = {
   getAllContents,
   saveContent,
   updateContent,
@@ -190,3 +190,5 @@ export default {
   getContentById,
   getContentsByCategory
 };
+
+export default dynamoDBService;

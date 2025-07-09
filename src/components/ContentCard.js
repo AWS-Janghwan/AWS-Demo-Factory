@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
   Card,
   CardContent,
-  CardMedia,
   CardActionArea,
   Typography,
   Chip,
@@ -133,7 +132,7 @@ const ContentCard = ({ content, allFiles = [], compact = false }) => {
     };
 
     findContentMedia();
-  }, [content.content, content.title, content.files, allFiles]);
+  }, [content.content, content.title, content.files, allFiles, getSecureFileUrl]);
 
   // 컴팩트 모드에 따른 높이 설정
   const cardHeight = compact ? 320 : 400;

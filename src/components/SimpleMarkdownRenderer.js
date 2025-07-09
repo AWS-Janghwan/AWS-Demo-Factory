@@ -29,8 +29,6 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
   const [failedUrls, setFailedUrls] = useState(new Set());
   const [refreshingUrls, setRefreshingUrls] = useState(new Set());
   
-  const { refreshContentUrls } = useContent();
-
   // 이미지 클릭 핸들러
   const handleImageClick = (file) => {
     setSelectedImage(file);

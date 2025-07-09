@@ -10,7 +10,6 @@ import {
   Divider,
   Button,
   Card,
-  CardContent,
   Chip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -28,7 +27,6 @@ const HomePage = () => {
   
   const { contents, loading, getAllContents, getLatestContents } = useContent();
   const { isContentManager } = useAuth();
-  const { trackVisitor } = useAnalytics();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredContents, setFilteredContents] = useState([]);
   const [latestContents, setLatestContents] = useState([]);
@@ -90,50 +88,6 @@ const HomePage = () => {
       setFilteredContents(filtered);
     }
   }, [searchQuery, loading, contents, getAllContents]);
-
-  // Get category URL
-  const getCategoryUrl = (category) => {
-    switch (category) {
-      case 'Generative AI':
-        return 'generative-ai';
-      case 'Manufacturing':
-        return 'manufacturing';
-      case 'Retail/CPG':
-        return 'retail-cpg';
-      case 'Telco/Media':
-        return 'telco-media';
-      case 'Finance':
-        return 'finance';
-      case 'Amazon Q':
-        return 'amazon-q';
-      case 'ETC':
-        return 'etc';
-      default:
-        return category.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    }
-  };
-
-  // Get category color
-  const getCategoryColor = (category) => {
-    switch (category) {
-      case 'Generative AI':
-        return '#5A3AA5';
-      case 'Manufacturing':
-        return '#1E8900';
-      case 'Retail/CPG':
-        return '#FF9900';
-      case 'Telco/Media':
-        return '#D13212';
-      case 'Finance':
-        return '#00A1C9';
-      case 'Amazon Q':
-        return '#0073BB';
-      case 'ETC':
-        return '#232F3E';
-      default:
-        return '#232F3E';
-    }
-  };
 
   if (loading) {
     return (

@@ -8,10 +8,6 @@ import {
   Breadcrumbs,
   Link as MuiLink,
   Paper,
-  Grid,
-  Card,
-  CardMedia,
-  CardContent,
   IconButton,
   Dialog,
   DialogContent,
@@ -23,11 +19,9 @@ import {
 } from '@mui/material';
 import {
   NavigateNext as NavigateNextIcon,
-  PlayArrow as PlayArrowIcon,
   Close as CloseIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Refresh as RefreshIcon,
   Visibility as VisibilityIcon,
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon
@@ -133,7 +127,7 @@ const ContentDetailPage = () => {
     };
 
     fetchContent();
-  }, [id]); // getContentById 제거하여 중복 호출 방지
+  }, [id, getContentById, getSecureFileUrl, incrementViews, trackPageView]); // 필요한 의존성들 추가
 
   // 수정/삭제 권한 체크 함수
   const canEditContent = () => {
@@ -156,12 +150,6 @@ const ContentDetailPage = () => {
       console.error('콘텐츠 삭제 실패:', error);
       alert('콘텐츠 삭제에 실패했습니다.');
     }
-  };
-
-  // 미디어 클릭 핸들러
-  const handleMediaClick = (media) => {
-    setSelectedMedia(media);
-    setMediaDialogOpen(true);
   };
 
   // 좋아요 핸들러
@@ -201,8 +189,6 @@ const ContentDetailPage = () => {
   const categoryPath = content.category ? content.category.toLowerCase().replace('/', '-') : 'uncategorized';
 
   // 미디어 파일 분류 - 하이브리드 파일 시스템 사용
-  const images = allFiles?.filter(file => file.type.startsWith('image/')) || [];
-  const videos = allFiles?.filter(file => file.type.startsWith('video/')) || [];
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>

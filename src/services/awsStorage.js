@@ -398,7 +398,7 @@ export const testAWSConnection = async () => {
   }
 };
 
-export default {
+const awsStorageService = {
   uploadLargeFile,
   getStreamingUrl,
   deleteFileFromS3,
@@ -412,3 +412,5 @@ export default {
   toggleLike,
   testAWSConnection
 };
+
+export default awsStorageService;

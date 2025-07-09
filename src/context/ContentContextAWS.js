@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import awsStorage from '../services/awsStorage';
 import dynamoDBService from '../services/dynamoDBService';
 import s3FileService from '../services/s3FileService';
 import secureS3Service from '../services/secureS3Service';
@@ -44,7 +43,7 @@ export const ContentProvider = ({ children }) => {
     return () => {
       clearInterval(urlRefreshInterval);
     };
-  }, []);
+  }, [loadContentsFromDynamoDB]);
 
   // DynamoDB에서 데이터 로드 (영구 저장소)
   const loadContentsFromDynamoDB = async () => {

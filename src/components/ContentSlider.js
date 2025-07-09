@@ -13,7 +13,6 @@ import {
 import ContentCard from './ContentCard';
 
 const ContentSlider = ({ contents, allFiles = [], title, showRanking = false }) => {
-  const [scrollPosition, setScrollPosition] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
@@ -30,7 +29,6 @@ const ContentSlider = ({ contents, allFiles = [], title, showRanking = false }) 
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
       setCanScrollLeft(scrollLeft > 0);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
-      setScrollPosition(scrollLeft);
     }
   };
 
