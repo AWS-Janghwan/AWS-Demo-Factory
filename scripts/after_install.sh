@@ -24,13 +24,13 @@
 cd /data/AWS-Demo-Factory
 
 # node_module 삭제
-rm -rf /data/AWS-Demo-Factory/node_modules/
+#rm -rf /data/AWS-Demo-Factory/node_modules/
 
 # # npm 패키지 설치
-npm install --force
+#npm install --force
 
 # # 리액트 앱 빌드
-npm run build
+#npm run build
 
 
 

@@ -7,7 +7,7 @@ cd /data/AWS-Demo-Factory
 
 # React 앱 시작
 # /usr/local/bin/pm2 start ./node_modules/react-scripts/scripts/start.js --name "demo-factory" --watch
-sudo /usr/local/bin/pm2 start ecosystem.config.js
+#sudo /usr/local/bin/pm2 start ecosystem.config.js
 
 
 # /usr/local/bin/pm2 restart 0
