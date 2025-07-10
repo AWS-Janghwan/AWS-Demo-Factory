@@ -1,0 +1,25 @@
+{
+  "short_name": "AWS Demo Factory",
+  "name": "AWS Demo Factory - 클라우드 혁신의 무한한 가능성을 실현하는 플랫폼",
+  "icons": [
+    {
+      "src": "aws-logo-emblem.png",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "aws-logo-emblem.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "aws-logo-emblem.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#232F3E",
+  "background_color": "#ffffff"
+}
