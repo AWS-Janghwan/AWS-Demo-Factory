@@ -136,7 +136,7 @@ def create_professional_report(ai_insights, analytics_data):
         
         now = datetime.now().strftime("%B %d, %Y")
         story.append(Paragraph(f"Generated on: {now}", body_style))
-        story.append(Paragraph("AI Model: Claude 3.7 Sonnet (Amazon Bedrock)", body_style))
+        story.append(Paragraph("AI Model: Claude 4 Sonnet (Amazon Bedrock)", body_style))
         story.append(Spacer(1, 0.5*inch))
         
         # 요약 박스
@@ -300,7 +300,7 @@ def create_professional_report(ai_insights, analytics_data):
         
         # 푸터
         story.append(Spacer(1, 50))
-        story.append(Paragraph("This comprehensive analysis was generated using Claude 3.7 Sonnet from Amazon Bedrock.", 
+        story.append(Paragraph("This comprehensive analysis was generated using Claude 4 Sonnet from Amazon Bedrock.", 
                               ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, 
                                            textColor=colors.grey, alignment=1)))
         

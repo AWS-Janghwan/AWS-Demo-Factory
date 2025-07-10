@@ -26,7 +26,7 @@ export const generateAIAnalyticsReport = async (analyticsData) => {
       normalizedInsights = {
         summary: aiInsights,
         generatedAt: new Date().toISOString(),
-        modelUsed: 'Claude 3.5 Sonnet',
+        modelUsed: 'Claude 4 Sonnet',
         dataProcessed: Object.keys(analyticsData).length
       };
     } else if (aiInsights && typeof aiInsights === 'object') {
@@ -34,7 +34,7 @@ export const generateAIAnalyticsReport = async (analyticsData) => {
       normalizedInsights = {
         summary: aiInsights.summary || aiInsights.data || aiInsights.content || JSON.stringify(aiInsights),
         generatedAt: aiInsights.generatedAt || new Date().toISOString(),
-        modelUsed: aiInsights.modelUsed || 'Claude 3.5 Sonnet',
+        modelUsed: aiInsights.modelUsed || 'Claude 4 Sonnet',
         dataProcessed: aiInsights.dataProcessed || Object.keys(analyticsData).length
       };
     } else {

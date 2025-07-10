@@ -35,7 +35,7 @@
 ## ✨ 주요 기능
 
 ### 🤖 AI 기반 분석 시스템 (v4.1)
-- **Claude 3.5 Sonnet** 모델을 활용한 지능형 데이터 분석
+- **Claude 4 Sonnet** 모델을 활용한 지능형 데이터 분석
 - 분석 데이터를 AI가 해석하여 전문적인 인사이트 제공
 - 권장사항 및 액션 아이템 자동 생성
 - **AI 기반 PDF 리포트** 생성 (전체 분석, 콘텐츠 분석, 작성자 분석)
@@ -87,7 +87,7 @@
 - **Amazon Cognito**: 사용자 인증 및 권한 관리
 - **Amazon DynamoDB**: NoSQL 데이터베이스
 - **Amazon S3**: 파일 저장소
-- **Amazon Bedrock**: AI/ML 서비스 (Claude 3.5 Sonnet)
+- **Amazon Bedrock**: AI/ML 서비스 (Claude 4 Sonnet)
 - **Application Load Balancer (ALB)**: 로드 밸런싱
 - **Amazon EC2**: 컴퓨팅 인스턴스
 - **AWS CodeDeploy**: 자동 배포

@@ -425,7 +425,7 @@ AI Model Used: ${aiInsights.modelUsed}
     yPos = await addSectionTitle(doc, '💡 AI Recommendations & Next Steps', yPos);
     
     const recommendations = `
-This report was generated using Amazon Bedrock's Claude 3.5 Sonnet model to provide 
+This report was generated using Amazon Bedrock's Claude 4 Sonnet model to provide 
 intelligent insights based on your AWS Demo Factory analytics data.
 
 Key Benefits of AI-Powered Analytics:
@@ -437,7 +437,7 @@ Key Benefits of AI-Powered Analytics:
 For more detailed analysis or custom insights, please contact your AWS solutions architect.
 
 Report Generation Details:
-• AI Model: Claude 3.5 Sonnet (us-west-2)
+• AI Model: Claude 4 Sonnet (us-west-2)
 • Data Points Analyzed: ${aiInsights.dataProcessed}
 • Generation Time: ${formatDateTime()}
 • Report Version: AI-Enhanced v1.0

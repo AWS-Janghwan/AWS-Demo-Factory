@@ -2,7 +2,7 @@
 
 ## 🎯 개요
 
-AWS Demo Factory에서 AI 기반 PDF 리포트 생성을 위해 Amazon Bedrock의 Claude 3.5 Sonnet 모델을 사용합니다.
+AWS Demo Factory에서 AI 기반 PDF 리포트 생성을 위해 Amazon Bedrock의 Claude 4 Sonnet 모델을 사용합니다.
 
 ## 🔧 필요한 설정
 
@@ -37,7 +37,7 @@ AWS Demo Factory에서 AI 기반 PDF 리포트 생성을 위해 Amazon Bedrock�
 1. AWS Console → Amazon Bedrock 서비스 접속
 2. 좌측 메뉴에서 "Model access" 선택
 3. "Manage model access" 클릭
-4. "Anthropic" 섹션에서 "Claude 3.5 Sonnet" 체크
+4. "Anthropic" 섹션에서 "Claude 4 Sonnet" 체크
 5. "Save changes" 클릭
 
 ### 4. 환경 변수 설정
@@ -103,7 +103,7 @@ REACT_APP_BEDROCK_REGION=us-west-2
 
 ## 💰 비용 정보
 
-### Claude 3.5 Sonnet 가격 (us-west-2)
+### Claude 4 Sonnet 가격 (us-west-2)
 - **입력 토큰**: $3.00 per 1M tokens
 - **출력 토큰**: $15.00 per 1M tokens
 

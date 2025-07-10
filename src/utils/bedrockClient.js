@@ -3,7 +3,7 @@
 const BEDROCK_API_BASE_URL = 'http://localhost:5001/api/bedrock';
 
 /**
- * 백엔드 API를 통해 Claude 3.5 Sonnet 호출
+ * 백엔드 API를 통해 Claude 4 Sonnet 호출
  * @param {string} endpoint - API 엔드포인트
  * @param {Object} data - 전송할 데이터
  * @returns {Promise<Object>} - API 응답

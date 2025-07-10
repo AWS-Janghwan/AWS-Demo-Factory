@@ -4,8 +4,8 @@
 sudo /usr/local/bin/pm2 kill
 
 # 기존 파일 정리 (백업)
-TODAY=$(date "+%Y%m%d%H%M")
-mv /data/AWS-Demo-Factory /data/bak/${TODAY}/
+#TODAY=$(date "+%Y%m%d%H%M")
+#mv /data/AWS-Demo-Factory /data/bak/${TODAY}/
 # sudo mv -f /data/AWS-Demo-Factory/
 
 # 애플리케이션 디렉토리 생성

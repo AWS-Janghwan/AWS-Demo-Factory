@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import dynamoDBService from '../services/dynamoDBService';
 import s3FileService from '../services/s3FileService';
 import secureS3Service from '../services/secureS3Service';
@@ -25,28 +25,8 @@ export const ContentProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
 
-  // Load content from DynamoDB on mount
-  useEffect(() => {
-    loadContentsFromDynamoDB();
-    
-    // 백그라운드 URL 갱신 스케줄러 (1시간마다)
-    const urlRefreshInterval = setInterval(() => {
-      console.log('🔄 [ContentContext] 백그라운드 URL 갱신 시작...');
-      urlManager.refreshExpiringSoonUrls();
-      urlManager.cleanupExpiredUrls();
-      
-      // 캐시 상태 로그
-      const cacheStatus = urlManager.getCacheStatus();
-      console.log('📊 [ContentContext] URL 캐시 상태:', cacheStatus);
-    }, 60 * 60 * 1000); // 1시간마다
-    
-    return () => {
-      clearInterval(urlRefreshInterval);
-    };
-  }, [loadContentsFromDynamoDB]);
-
-  // DynamoDB에서 데이터 로드 (영구 저장소)
-  const loadContentsFromDynamoDB = async () => {
+  // DynamoDB에서 데이터 로드 (영구 저장소) - useCallback으로 감싸서 의존성 문제 해결
+  const loadContentsFromDynamoDB = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -145,7 +125,27 @@ export const ContentProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // useCallback 의존성 배열
+
+  // Load content from DynamoDB on mount
+  useEffect(() => {
+    loadContentsFromDynamoDB();
+    
+    // 백그라운드 URL 갱신 스케줄러 (1시간마다)
+    const urlRefreshInterval = setInterval(() => {
+      console.log('🔄 [ContentContext] 백그라운드 URL 갱신 시작...');
+      urlManager.refreshExpiringSoonUrls();
+      urlManager.cleanupExpiredUrls();
+      
+      // 캐시 상태 로그
+      const cacheStatus = urlManager.getCacheStatus();
+      console.log('📊 [ContentContext] URL 캐시 상태:', cacheStatus);
+    }, 60 * 60 * 1000); // 1시간마다
+    
+    return () => {
+      clearInterval(urlRefreshInterval);
+    };
+  }, [loadContentsFromDynamoDB]);
 
   // localStorage에서 로드하고 DynamoDB로 마이그레이션
   const loadFromLocalStorageAndMigrate = async () => {

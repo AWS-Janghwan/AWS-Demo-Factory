@@ -233,7 +233,7 @@ def create_enhanced_korean_report(ai_insights, analytics_data):
         
         now = datetime.now().strftime("%Y년 %m월 %d일")
         story.append(Paragraph(f"생성일: {now}", body_style))
-        story.append(Paragraph("AI 모델: Claude 3.7 Sonnet (Amazon Bedrock)", body_style))
+        story.append(Paragraph("AI 모델: Claude 4 Sonnet (Amazon Bedrock)", body_style))
         story.append(Spacer(1, 0.5*inch))
         
         # 요약 테이블
@@ -402,7 +402,7 @@ def create_enhanced_korean_report(ai_insights, analytics_data):
         
         # 푸터
         story.append(Spacer(1, 50))
-        story.append(Paragraph("본 종합 분석은 Amazon Bedrock의 Claude 3.7 Sonnet 모델을 사용하여 생성되었습니다.", 
+        story.append(Paragraph("본 종합 분석은 Amazon Bedrock의 Claude 4 Sonnet 모델을 사용하여 생성되었습니다.", 
                               ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, 
                                            textColor=colors.grey, alignment=1, fontName=korean_font)))
         

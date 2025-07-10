@@ -14,14 +14,17 @@
 #echo "172.31.2.191:/backup /data nfs defaults 0 0">>/etc/fstab
 
 # video 복사
-if [ ! -d /data/AWS-Demo-Factory/public/source/movie ]; then
-    mkdir -p /data/AWS-Demo-Factory/public/source/movie
-fi
+#if [ ! -d /data/AWS-Demo-Factory/public/source/movie ]; then
+#    mkdir -p /data/AWS-Demo-Factory/public/source/movie
+#fi
 # mkdir /data/AWS-Demo-Factory/public/source/video
-yes | cp -r /data/video/* /data/AWS-Demo-Factory/public/source/movie/
+#yes | cp -r /data/video/* /data/AWS-Demo-Factory/public/source/movie/
 
 # 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
+
+# node_module 삭제
+rm -rf /data/AWS-Demo-Factory/node_modules/
 
 # # npm 패키지 설치
 npm install --force
