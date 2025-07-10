@@ -261,3 +261,27 @@ github-*.md
 # Test and debug files (but keep essential test files)
 *debug*
 *Debug*
+
+# Security sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+secrets.json
+config/secrets.js
+.secrets
+security-config.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Session and cache files
+sessions/
+.sessions
+cache/
+.cache-*

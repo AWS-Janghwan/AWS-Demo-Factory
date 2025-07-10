@@ -1,139 +1,141 @@
-# 🔒 보안 가이드
+# 🔐 AWS Demo Factory 보안 가이드
 
-## ⚠️ 중요한 보안 주의사항
+## 보안 취약점 해결 현황
 
-### 🚨 **환경 변수 보안**
+### ✅ 해결된 취약점들
+- **@babel/helpers**: 7.26.10 이상으로 업데이트
+- **brace-expansion**: 정규식 DoS 취약점 해결
+- **cross-spawn**: ReDoS 취약점 해결  
+- **http-proxy-middleware**: 3.0.5 이상으로 업데이트
+- **nanoid**: 3.3.8 이상으로 업데이트
+- **Python 의존성**: 모든 패키지 최신 버전으로 업데이트
 
-#### **절대 하지 말아야 할 것들**:
-- ❌ `.env` 파일을 Git에 커밋
-- ❌ AWS 액세스 키를 코드에 하드코딩
-- ❌ 프로덕션 키를 개발 환경에서 사용
-- ❌ 공개 저장소에 민감한 정보 노출
+### ⚠️ 주의가 필요한 취약점들
+- **nth-check**: react-scripts 의존성으로 인한 제약
+- **postcss**: resolve-url-loader 의존성 문제
+- **prismjs**: react-syntax-highlighter 의존성
+- **quill**: react-quill 의존성
+- **webpack-dev-server**: 개발 환경에서만 사용
 
-#### **반드시 해야 할 것들**:
-- ✅ `.env.example`을 복사하여 `.env` 생성
-- ✅ 실제 값으로 교체 후 사용
-- ✅ `.gitignore`에 `.env` 포함 확인
-- ✅ 정기적인 액세스 키 로테이션
+## 🛡️ 보안 강화 조치
 
-### 🔐 **AWS 보안 모범 사례**
+### 1. 서버 보안
+- **Helmet.js**: 보안 헤더 자동 설정
+- **Rate Limiting**: API 요청 제한
+- **CORS**: 크로스 오리진 요청 제어
+- **입력 검증**: express-validator 사용
+- **에러 핸들링**: 프로덕션에서 상세 에러 정보 숨김
 
-#### **1. IAM 역할 사용 (권장)**
+### 2. 인증 및 권한
+- **Amazon Cognito**: 엔터프라이즈급 사용자 인증
+- **JWT 토큰**: 안전한 세션 관리
+- **4단계 권한 체계**: Admin, Content Manager, Contributor, Viewer
+- **S3 Presigned URL**: 안전한 파일 업로드/다운로드
+
+### 3. 데이터 보안
+- **입력 검증**: XSS 및 SQL 인젝션 방지
+- **데이터 암호화**: 민감한 데이터 암호화 저장
+- **파일 업로드 제한**: 파일 타입 및 크기 제한
+- **로깅**: 보안 이벤트 로깅
+
+### 4. 네트워크 보안
+- **HTTPS 강제**: 모든 통신 암호화
+- **CSP 헤더**: 콘텐츠 보안 정책
+- **HSTS**: HTTP Strict Transport Security
+- **ELB**: 직접 EC2 접근 차단
+
+## 🔧 보안 설정 가이드
+
+### 환경 변수 설정
 ```bash
-# EC2에서 실행 시 IAM 역할 사용
-# 액세스 키 대신 역할 기반 인증 사용
+# .env 파일 생성
+cp .env.example .env
+
+# 보안 키 생성
+openssl rand -hex 32  # ENCRYPTION_KEY
+openssl rand -hex 64  # SESSION_SECRET
 ```
 
-#### **2. 최소 권한 원칙**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan"
-      ],
-      "Resource": [
-        "arn:aws:s3:::your-bucket/*",
-        "arn:aws:dynamodb:region:account:table/DemoFactoryContents"
-      ]
-    }
-  ]
-}
+### 서버 보안 설정
+```javascript
+// secure-server.js 사용
+const { app, validateInput } = require('./server/secure-server');
+
+// 보안 미들웨어 적용
+app.use('/api/content', validateInput, contentRoutes);
 ```
 
-#### **3. 액세스 키 관리**
+### AWS 보안 설정
 ```bash
-# 액세스 키 생성
-aws iam create-access-key --user-name demo-factory-user
+# IAM 정책 최소 권한 원칙
+aws iam create-policy --policy-name DemoFactoryMinimal
 
-# 액세스 키 비활성화
-aws iam update-access-key --access-key-id AKIA... --status Inactive
+# S3 버킷 보안 설정
+aws s3api put-bucket-encryption --bucket your-bucket-name
 
-# 액세스 키 삭제
-aws iam delete-access-key --access-key-id AKIA... --user-name demo-factory-user
+# CloudFront 보안 헤더
+aws cloudfront create-distribution --distribution-config file://security-headers.json
 ```
 
-### 🛡️ **환경별 보안 설정**
+## 📋 보안 체크리스트
 
-#### **개발 환경**
-```bash
-# .env.development
-NODE_ENV=development
-REACT_APP_DEBUG_MODE=true
-# 개발용 AWS 계정 사용
-```
+### 배포 전 체크리스트
+- [ ] 모든 의존성 최신 버전 확인
+- [ ] 환경 변수 보안 설정 완료
+- [ ] HTTPS 인증서 설정
+- [ ] 방화벽 규칙 설정
+- [ ] 로그 모니터링 설정
+- [ ] 백업 및 복구 계획 수립
 
-#### **스테이징 환경**
-```bash
-# .env.staging  
-NODE_ENV=staging
-REACT_APP_DEBUG_MODE=false
-# 스테이징용 AWS 계정 사용
-```
+### 정기 보안 점검
+- [ ] 월간 의존성 취약점 스캔
+- [ ] 분기별 보안 감사
+- [ ] 연간 침투 테스트
+- [ ] 보안 정책 업데이트
 
-#### **프로덕션 환경**
-```bash
-# .env.production
-NODE_ENV=production
-REACT_APP_DEBUG_MODE=false
-# 프로덕션용 AWS 계정 사용
-# IAM 역할 사용 권장
-```
+## 🚨 보안 사고 대응
 
-### 🔍 **보안 점검 체크리스트**
+### 1. 즉시 조치
+1. 영향받은 서비스 격리
+2. 관련 로그 수집 및 보존
+3. 보안팀 및 관리자에게 알림
+4. 임시 보안 패치 적용
 
-#### **배포 전 확인사항**
-- [ ] `.env` 파일이 `.gitignore`에 포함되어 있는가?
-- [ ] 코드에 하드코딩된 키가 없는가?
-- [ ] AWS 액세스 키가 최소 권한을 가지는가?
-- [ ] 프로덕션과 개발 환경이 분리되어 있는가?
-- [ ] 민감한 정보가 로그에 출력되지 않는가?
+### 2. 조사 및 분석
+1. 공격 벡터 분석
+2. 영향 범위 평가
+3. 데이터 유출 여부 확인
+4. 근본 원인 분석
 
-#### **정기 점검사항**
-- [ ] 액세스 키 사용 현황 모니터링
-- [ ] 비정상적인 API 호출 패턴 확인
-- [ ] 권한 설정 재검토
-- [ ] 액세스 키 로테이션 (90일마다 권장)
+### 3. 복구 및 개선
+1. 시스템 복구
+2. 보안 패치 적용
+3. 모니터링 강화
+4. 재발 방지 대책 수립
 
-### 🚨 **보안 사고 대응**
+## 📞 보안 문의
 
-#### **액세스 키 노출 시 즉시 조치**
-1. **즉시 키 비활성화**
-```bash
-aws iam update-access-key --access-key-id EXPOSED_KEY --status Inactive
-```
-
-2. **새 키 생성**
-```bash
-aws iam create-access-key --user-name your-user
-```
-
-3. **애플리케이션 설정 업데이트**
-4. **기존 키 삭제**
-```bash
-aws iam delete-access-key --access-key-id OLD_KEY --user-name your-user
-```
-
-5. **CloudTrail 로그 확인**
-6. **보안팀에 보고**
-
-### 📞 **보안 문의**
-
-보안 관련 문제나 취약점 발견 시:
+### 보안 취약점 신고
 - **이메일**: security@your-domain.com
-- **GitHub**: Security 탭에서 보안 이슈 보고
-- **긴급상황**: 즉시 액세스 키 비활성화 후 연락
+- **GitHub**: Security 탭에서 Private vulnerability reporting
+- **응답 시간**: 24시간 이내
 
-### 🔗 **참고 자료**
+### 보안 관련 문의
+- **기술 지원**: janghwan@amazon.com
+- **보안 정책**: security-policy@your-domain.com
 
-- [AWS 보안 모범 사례](https://docs.aws.amazon.com/security/)
-- [IAM 사용자 가이드](https://docs.aws.amazon.com/iam/)
-- [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
-- [AWS CloudTrail](https://docs.aws.amazon.com/cloudtrail/)
+## 📚 참고 자료
+
+### AWS 보안 가이드
+- [AWS Security Best Practices](https://aws.amazon.com/security/security-resources/)
+- [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/)
+- [Amazon Cognito Security](https://docs.aws.amazon.com/cognito/latest/developerguide/security.html)
+
+### 웹 애플리케이션 보안
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [Node.js Security Checklist](https://blog.risingstack.com/node-js-security-checklist/)
+- [React Security Best Practices](https://snyk.io/blog/10-react-security-best-practices/)
+
+---
+
+**⚠️ 중요**: 이 문서는 정기적으로 업데이트되며, 모든 팀원은 최신 보안 가이드라인을 숙지해야 합니다.
