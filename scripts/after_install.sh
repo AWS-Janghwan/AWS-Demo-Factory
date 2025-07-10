@@ -26,10 +26,17 @@ cd /data/AWS-Demo-Factory
 # node_module 삭제
 #rm -rf /data/AWS-Demo-Factory/node_modules/
 
-# # npm 패키지 설치
-#npm install --force
+# npm 패키지 설치
+npm install --force
 
-# # 리액트 앱 빌드
+# Python 가상환경 및 패키지 설치
+cd /data/AWS-Demo-Factory/python-pdf-server
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cd /data/AWS-Demo-Factory
+
+# 리액트 앱 빌드 (이미 빌드된 파일이 있으므로 스킵)
 #npm run build
 
 

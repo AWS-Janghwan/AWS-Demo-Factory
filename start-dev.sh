@@ -68,7 +68,7 @@ echo "✅ Bedrock API 서버 시작됨 (PID: $BEDROCK_PID, 포트: 5001)"
 
 # 3. 백엔드 서버 시작 (포트 5004)
 echo "🖥️ 백엔드 서버 시작 중..."
-node working-server.js &
+node backend-api-server.js &
 BACKEND_PID=$!
 echo $BACKEND_PID > backend-server.pid
 echo "✅ 백엔드 서버 시작됨 (PID: $BACKEND_PID, 포트: 5004)"
