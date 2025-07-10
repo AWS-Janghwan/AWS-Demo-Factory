@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { 
   CognitoUserPool, 
   CognitoUser, 
@@ -13,6 +13,14 @@ const poolData = {
   ClientId: process.env.REACT_APP_COGNITO_USER_POOL_CLIENT_ID
 };
 
+// 환경 변수 검증
+if (!poolData.UserPoolId || !poolData.ClientId) {
+  console.error('❌ Cognito 환경 변수가 설정되지 않았습니다!');
+  console.error('UserPoolId:', poolData.UserPoolId);
+  console.error('ClientId:', poolData.ClientId);
+  throw new Error('Cognito 환경 변수가 설정되지 않았습니다. .env 파일을 확인하세요.');
+}
+
 const userPool = new CognitoUserPool(poolData);
 
 // AWS Cognito Identity 설정
@@ -21,13 +29,6 @@ AWS.config.update({
   credentials: new AWS.CognitoIdentityCredentials({
     IdentityPoolId: process.env.REACT_APP_COGNITO_IDENTITY_POOL_ID
   })
-});
-
-// Cognito Identity Provider 설정 (그룹 정보 조회용)
-const cognitoIdp = new AWS.CognitoIdentityServiceProvider({
-  region: process.env.REACT_APP_COGNITO_REGION,
-  accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
 });
 
 // 사용자 권한 정의
@@ -48,29 +49,31 @@ export const AuthProvider = ({ children }) => {
   const [needsNewPassword, setNeedsNewPassword] = useState(false);
   const [tempCognitoUser, setTempCognitoUser] = useState(null);
 
-  // 컴포넌트 마운트 시 현재 사용자 확인
-  useEffect(() => {
-    checkCurrentUser();
-  }, [checkCurrentUser]);
-
-  // 사용자 그룹 정보 가져오기
-  const getUserGroups = async (username) => {
+  // 사용자 그룹 정보 가져오기 (JWT 토큰에서 추출)
+  const getUserGroups = useCallback(async (session) => {
     try {
-      const params = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Username: username
-      };
+      if (!session) return [];
       
-      const result = await cognitoIdp.adminListGroupsForUser(params).promise();
-      return result.Groups.map(group => group.GroupName);
+      // ID 토큰에서 그룹 정보 추출
+      const idToken = session.getIdToken();
+      const payload = idToken.payload;
+      
+      console.log('🔍 JWT 토큰 페이로드:', payload);
+      
+      // Cognito 그룹은 'cognito:groups' 클레임에 저장됨
+      const groups = payload['cognito:groups'] || [];
+      
+      console.log('👥 사용자 그룹:', groups);
+      return groups;
+      
     } catch (error) {
       console.error('사용자 그룹 조회 실패:', error);
       return [];
     }
-  };
+  }, []);
 
-  // 현재 로그인된 사용자 확인
-  const checkCurrentUser = async () => {
+  // 현재 로그인된 사용자 확인 (useCallback으로 감싸서 의존성 문제 해결)
+  const checkCurrentUser = useCallback(async () => {
     try {
       setLoading(true);
       const currentUser = userPool.getCurrentUser();
@@ -96,7 +99,7 @@ export const AuthProvider = ({ children }) => {
                 const userInfo = parseUserAttributes(attributes);
                 
                 // 사용자 그룹 정보 가져오기
-                const groups = await getUserGroups(currentUser.getUsername());
+                const groups = await getUserGroups(session);
                 
                 setUser({
                   ...userInfo,
@@ -139,7 +142,12 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setLoading(false);
     }
-  };
+  }, [getUserGroups]); // useCallback 의존성 배열
+
+  // 컴포넌트 마운트 시 현재 사용자 확인
+  useEffect(() => {
+    checkCurrentUser();
+  }, [checkCurrentUser]);
 
   // 사용자 속성 파싱
   const parseUserAttributes = (attributes) => {
@@ -242,7 +250,7 @@ export const AuthProvider = ({ children }) => {
               const userInfo = parseUserAttributes(attributes);
               
               // 사용자 그룹 정보 가져오기
-              const groups = await getUserGroups(cognitoUser.getUsername());
+              const groups = await getUserGroups(session);
               
               const userData = {
                 ...userInfo,
@@ -407,7 +415,7 @@ export const AuthProvider = ({ children }) => {
               const userInfo = parseUserAttributes(attributes);
               
               // 사용자 그룹 정보 가져오기
-              const groups = await getUserGroups(tempCognitoUser.getUsername());
+              const groups = await getUserGroups(session);
               
               const userData = {
                 ...userInfo,

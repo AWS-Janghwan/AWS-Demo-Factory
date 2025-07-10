@@ -76,13 +76,6 @@ import {
 } from '../utils/aiAnalyticsGenerator';
 import { Navigate } from 'react-router-dom';
 
-// Cognito Identity Provider 설정
-const cognitoIdp = new AWS.CognitoIdentityServiceProvider({
-  region: process.env.REACT_APP_COGNITO_REGION,
-  accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
-});
-
 const AdminPage = () => {
   const { isAdmin } = useAuth();
   
@@ -441,131 +434,65 @@ const AdminPage = () => {
     });
   }, []);
 
-  // Cognito에서 사용자 목록 가져오기
+  // Cognito에서 사용자 목록 가져오기 (백엔드 API 사용)
   const fetchCognitoUsers = async () => {
     setLoadingUsers(true);
     try {
-      console.log('👥 Cognito 사용자 목록 조회 시작...');
+      console.log('👥 백엔드 API를 통한 사용자 목록 조회 시작...');
       
-      const params = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Limit: 60 // 최대 60명까지 조회
-      };
+      const response = await fetch('http://localhost:3001/api/cognito/users');
+      const data = await response.json();
       
-      const result = await cognitoIdp.listUsers(params).promise();
-      console.log('📋 Cognito 사용자 목록:', result);
-      
-      // 사용자 정보 파싱 및 그룹 정보 추가
-      const usersWithGroups = await Promise.all(
-        result.Users.map(async (cognitoUser) => {
-          // 사용자 속성 파싱
-          const attributes = {};
-          cognitoUser.Attributes.forEach(attr => {
-            attributes[attr.Name] = attr.Value;
-          });
-          
-          // 사용자 그룹 정보 가져오기
-          let groups = [];
-          try {
-            const groupParams = {
-              UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-              Username: cognitoUser.Username
-            };
-            const groupResult = await cognitoIdp.adminListGroupsForUser(groupParams).promise();
-            groups = groupResult.Groups.map(group => group.GroupName);
-          } catch (groupError) {
-            console.error('그룹 정보 조회 실패:', groupError);
-          }
-          
-          // 최고 권한 그룹을 role로 설정
-          const role = groups.includes('Admin') ? USER_ROLES.ADMIN :
-                      groups.includes('ContentManager') ? USER_ROLES.CONTENT_MANAGER :
-                      USER_ROLES.VIEWER;
-          
-          // 로컬 스토리지에서 추가 정보 가져오기
-          const userExtraInfo = JSON.parse(localStorage.getItem('userExtraInfo') || '[]');
-          const extraInfo = userExtraInfo.find(info => info.email === attributes.email) || {};
-          
+      if (data.success) {
+        console.log('✅ 사용자 목록 조회 성공:', data.users);
+        
+        // 로컬 스토리지에서 추가 정보 가져오기
+        const userExtraInfo = JSON.parse(localStorage.getItem('userExtraInfo') || '[]');
+        
+        const usersWithExtraInfo = data.users.map(user => {
+          const extraInfo = userExtraInfo.find(info => info.email === user.email) || {};
           return {
-            id: cognitoUser.Username,
-            username: cognitoUser.Username,
-            name: attributes.name || 'Unknown',
-            email: attributes.email || 'No Email',
+            ...user,
             company: extraInfo.company || '미입력',
-            purpose: extraInfo.purpose || '미입력',
-            role: role,
-            groups: groups,
-            status: cognitoUser.UserStatus,
-            enabled: cognitoUser.Enabled,
-            createdAt: cognitoUser.UserCreateDate ? 
-              new Date(cognitoUser.UserCreateDate).toLocaleDateString('ko-KR') : 'Unknown',
-            lastModified: cognitoUser.UserLastModifiedDate ?
-              new Date(cognitoUser.UserLastModifiedDate).toLocaleDateString('ko-KR') : 'Unknown'
+            purpose: extraInfo.purpose || '미입력'
           };
-        })
-      );
-      
-      console.log('✅ 사용자 목록 파싱 완료:', usersWithGroups);
-      setUsers(usersWithGroups);
+        });
+        
+        setUsers(usersWithExtraInfo);
+      } else {
+        throw new Error(data.error);
+      }
       
     } catch (error) {
-      console.error('❌ Cognito 사용자 목록 조회 실패:', error);
+      console.error('❌ 사용자 목록 조회 실패:', error);
       alert(`사용자 목록을 불러오는데 실패했습니다: ${error.message}`);
     } finally {
       setLoadingUsers(false);
     }
   };
 
-  // 사용자 그룹 변경 함수
+  // 사용자 그룹 변경 함수 (백엔드 API 사용)
   const changeUserRole = async (username, newRole) => {
     try {
       console.log(`🔄 사용자 ${username}의 역할을 ${newRole}로 변경 시작...`);
       
-      // 기존 그룹에서 제거
-      const currentUser = users.find(u => u.username === username);
-      if (currentUser && currentUser.groups.length > 0) {
-        for (const group of currentUser.groups) {
-          try {
-            await cognitoIdp.adminRemoveUserFromGroup({
-              UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-              Username: username,
-              GroupName: group
-            }).promise();
-            console.log(`✅ ${username}을 ${group} 그룹에서 제거`);
-          } catch (removeError) {
-            console.error(`그룹 제거 실패 (${group}):`, removeError);
-          }
-        }
-      }
+      const response = await fetch(`http://localhost:3001/api/cognito/users/${username}/role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newRole })
+      });
       
-      // 새 그룹에 추가
-      let targetGroup = '';
-      switch (newRole) {
-        case USER_ROLES.ADMIN:
-          targetGroup = 'Admin';
-          break;
-        case USER_ROLES.CONTENT_MANAGER:
-          targetGroup = 'ContentManager';
-          break;
-        default:
-          // Viewer는 그룹 없음
-          console.log('✅ Viewer 역할로 설정 (그룹 없음)');
-          await fetchCognitoUsers(); // 사용자 목록 새로고침
-          return;
-      }
+      const data = await response.json();
       
-      if (targetGroup) {
-        await cognitoIdp.adminAddUserToGroup({
-          UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-          Username: username,
-          GroupName: targetGroup
-        }).promise();
-        console.log(`✅ ${username}을 ${targetGroup} 그룹에 추가`);
+      if (data.success) {
+        console.log('✅ 역할 변경 성공:', data.message);
+        await fetchCognitoUsers(); // 사용자 목록 새로고침
+        alert(data.message);
+      } else {
+        throw new Error(data.error);
       }
-      
-      // 사용자 목록 새로고침
-      await fetchCognitoUsers();
-      alert(`${currentUser?.name || username}님의 역할이 ${getRoleDisplayName(newRole)}로 변경되었습니다.`);
       
     } catch (error) {
       console.error('❌ 사용자 역할 변경 실패:', error);
@@ -863,7 +790,7 @@ const AdminPage = () => {
         >
           <Typography variant="body2">
             <strong>🤖 AI 분석 모드 {aiConnectionStatus === 'connected' && pythonPdfStatus === 'connected' ? '활성화' : '오류'}</strong><br/>
-            {aiConnectionStatus === 'connected' && pythonPdfStatus === 'connected' && 'Amazon Bedrock의 Claude 3.5 Sonnet 모델과 Python PDF 생성기가 연결되어 고품질 한글 리포트를 제공합니다.'}
+            {aiConnectionStatus === 'connected' && pythonPdfStatus === 'connected' && 'Amazon Bedrock의 Claude 4 Sonnet 모델과 Python PDF 생성기가 연결되어 고품질 한글 리포트를 제공합니다.'}
             {(aiConnectionStatus === 'error' || pythonPdfStatus === 'error') && (
               <>
                 {aiConnectionStatus === 'error' && 'Bedrock API 서버 연결 실패. '}
@@ -939,7 +866,7 @@ const AdminPage = () => {
         />
         
         {/* AI 기반 전체 리포트 버튼 */}
-        <Tooltip title={useAI ? "Amazon Bedrock Claude 3.5 Sonnet을 사용한 AI 인사이트 포함" : "기본 데이터 리포트"}>
+        <Tooltip title={useAI ? "Amazon Bedrock Claude 4 Sonnet을 사용한 AI 인사이트 포함" : "기본 데이터 리포트"}>
           <span>
             <Button
               variant="contained"
