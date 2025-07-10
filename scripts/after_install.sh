@@ -23,6 +23,10 @@
 # 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
 
+# 프로덕션 환경 변수 설정
+chmod +x setup-production-env.sh
+./setup-production-env.sh
+
 # node_module 삭제
 #rm -rf /data/AWS-Demo-Factory/node_modules/
 

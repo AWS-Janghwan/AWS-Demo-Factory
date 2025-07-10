@@ -13,7 +13,12 @@ from datetime import datetime
 from advanced_korean_report import create_advanced_korean_report
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001'])
+CORS(app, origins=[
+    'http://localhost:3000', 
+    'http://localhost:3001',
+    'https://demofactory.cloud',
+    'https://www.demofactory.cloud'
+])
 
 @app.route('/health', methods=['GET'])
 def health_check():

@@ -8,7 +8,11 @@ const PORT = process.env.BACKEND_PORT || 3001;
 
 // CORS 설정
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://demofactory.cloud'],
+  origin: [
+    'http://localhost:3000', 
+    'https://demofactory.cloud',
+    'https://www.demofactory.cloud'
+  ],
   credentials: true
 }));
 
