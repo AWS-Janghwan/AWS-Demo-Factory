@@ -1,85 +1,39 @@
 #!/bin/bash
 
-echo "🚀 [$(date)] 배포 시작 - AfterInstall 단계"
-
-# 애플리케이션 디렉토리로 이동
 cd /data/AWS-Demo-Factory
 
-echo "⚙️ [$(date)] 1/7 프로덕션 환경 변수 설정 중..."
-# 프로덕션 환경 변수 설정
-chmod +x setup-production-env.sh
-./setup-production-env.sh
-echo "✅ [$(date)] 환경 변수 설정 완료"
+# 환경 변수 설정 (빠른 버전)
+cat > .env.production << 'EOF'
+NODE_ENV=production
+REACT_APP_API_BASE_URL=https://www.demofactory.cloud
+REACT_APP_BACKEND_API_URL=https://www.demofactory.cloud:3001
+REACT_APP_PDF_SERVER_URL=https://www.demofactory.cloud:5002
+REACT_APP_BEDROCK_SERVER_URL=https://www.demofactory.cloud:5001
+REACT_APP_COGNITO_REGION=us-west-2
+REACT_APP_COGNITO_IDENTITY_POOL_ID=us-west-2:f02cd74c-db8b-4809-9f26-be7a52e880b6
+REACT_APP_COGNITO_USER_POOL_ID=us-west-2_35cY0az2M
+REACT_APP_COGNITO_USER_POOL_CLIENT_ID=7r2d2c8dnb245bk9r9e8f2vqev
+REACT_APP_COGNITO_REGION=us-west-2
+REACT_APP_S3_BUCKET=demo-factory-storage-bucket
+REACT_APP_DYNAMODB_TABLE=DemoFactoryContents
+REACT_APP_DYNAMODB_REGION=us-west-2
+EOF
 
-echo "🗑️ [$(date)] 2/7 기존 파일 정리 중..."
-# node_module 삭제
-rm -rf /data/AWS-Demo-Factory/node_modules/
-# 기존 빌드 파일 삭제
-rm -rf /data/AWS-Demo-Factory/build/
-echo "✅ [$(date)] 파일 정리 완료"
+cp .env.production .env
 
-echo "📦 [$(date)] 3/7 npm 패키지 설치 중... (예상 시간: 10초)"
-# npm 패키지 설치
-npm install --force
-echo "✅ [$(date)] npm 패키지 설치 완료"
+# npm 설치 (캐시 활용)
+npm ci --only=production --silent
 
-echo "🏗️ [$(date)] 4/7 React 애플리케이션 빌드 중... (예상 시간: 30초)"
-# 서버에서 안전한 프로덕션 빌드 생성 (환경 변수 순환 참조 방지)
+# React 빌드 (환경변수 정리)
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
 npm run build
-echo "✅ [$(date)] React 빌드 완료"
 
-echo "🐍 [$(date)] 5/7 Python 환경 설정 중... (예상 시간: 5분)"
-# Python 가상환경 및 패키지 설치
-cd /data/AWS-Demo-Factory/python-pdf-server
-
-# 기존 가상환경 삭제
-rm -rf venv/
-
-# 새 가상환경 생성
+# Python 환경 (필수만)
+cd python-pdf-server
+rm -rf venv
 python3 -m venv venv
-
-# 가상환경 활성화 및 패키지 설치
 source venv/bin/activate
-pip install --upgrade pip --quiet
-echo "  📋 [$(date)] Python 패키지 설치 중..."
+pip install --quiet flask flask-cors requests python-dotenv reportlab
 
-# 필수 패키지만 먼저 설치
-pip install flask==3.0.3 flask-cors==4.0.1 requests==2.31.0 python-dotenv==1.0.1 --quiet
-
-# 추가 패키지 설치 (호환 버전)
-pip install reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF --quiet
-
-# 원래 디렉토리로 복귀
-cd /data/AWS-Demo-Factory
-echo "✅ [$(date)] Python 환경 설정 완료"
-
-echo "🔧 [$(date)] 6/7 권한 설정 중..."
-# 전체 디렉토리 권한 설정
-chown -R root:root /data/AWS-Demo-Factory
-chmod -R 755 /data/AWS-Demo-Factory
-
-# 로그 파일 권한 설정
-touch /data/AWS-Demo-Factory/pdf-server.log
-touch /data/AWS-Demo-Factory/bedrock-server.log  
-touch /data/AWS-Demo-Factory/backend-api.log
-chmod 666 /data/AWS-Demo-Factory/*.log
-
-# PID 파일 권한 설정
-touch /data/AWS-Demo-Factory/python-pdf-server.pid
-touch /data/AWS-Demo-Factory/bedrock-server.pid
-touch /data/AWS-Demo-Factory/backend-server.pid
-chmod 666 /data/AWS-Demo-Factory/*.pid
-echo "✅ [$(date)] 권한 설정 완료"
-
-echo "🧪 [$(date)] 7/7 Python 모듈 테스트 중..."
-# Python 모듈 import 테스트
-cd /data/AWS-Demo-Factory/python-pdf-server
-source venv/bin/activate
-python -c "import flask, flask_cors, requests, reportlab; print('✅ 모든 Python 모듈 정상')" || echo "❌ Python 모듈 문제 발생"
-cd /data/AWS-Demo-Factory
-echo "✅ [$(date)] 모듈 테스트 완료"
-
-echo "🎉 [$(date)] 배포 완료 - AfterInstall 단계 성공!"
-echo "Deployment completed successfully" 
+echo "AfterInstall 완료" 
