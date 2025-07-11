@@ -28,10 +28,16 @@ chmod +x setup-production-env.sh
 ./setup-production-env.sh
 
 # node_module 삭제
-#rm -rf /data/AWS-Demo-Factory/node_modules/
+rm -rf /data/AWS-Demo-Factory/node_modules/
 
 # npm 패키지 설치
 npm install --force
+
+# 기존 빌드 파일 삭제
+rm -rf /data/AWS-Demo-Factory/build/
+
+# 서버에서 안전한 프로덕션 빌드 생성 (AWS 자격 증명 제외)
+REACT_APP_AWS_ACCESS_KEY_ID="" REACT_APP_AWS_SECRET_ACCESS_KEY="" npm run build
 
 # Python 가상환경 및 패키지 설치
 cd /data/AWS-Demo-Factory/python-pdf-server
@@ -39,9 +45,6 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cd /data/AWS-Demo-Factory
-
-# 리액트 앱 빌드 (이미 빌드된 파일이 있으므로 스킵)
-#npm run build
 
 
 
