@@ -3,6 +3,7 @@ os: linux
 files:
   - source: /
     destination: /data/AWS-Demo-Factory
+    overwrite: true
 hooks:
   BeforeInstall:
     - location: scripts/before_install.sh
