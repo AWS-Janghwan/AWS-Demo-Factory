@@ -36,14 +36,26 @@ npm install --force
 # 기존 빌드 파일 삭제
 rm -rf /data/AWS-Demo-Factory/build/
 
-# 서버에서 안전한 프로덕션 빌드 생성 (AWS 자격 증명 제외)
-REACT_APP_AWS_ACCESS_KEY_ID="" REACT_APP_AWS_SECRET_ACCESS_KEY="" npm run build
+# 서버에서 안전한 프로덕션 빌드 생성 (환경 변수 순환 참조 방지)
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+npm run build
 
 # Python 가상환경 및 패키지 설치
 cd /data/AWS-Demo-Factory/python-pdf-server
+
+# 기존 가상환경 삭제
+rm -rf venv/
+
+# 새 가상환경 생성
 python3 -m venv venv
+
+# 가상환경 활성화 및 패키지 설치
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
+
+# 원래 디렉토리로 복귀
 cd /data/AWS-Demo-Factory
 
 
