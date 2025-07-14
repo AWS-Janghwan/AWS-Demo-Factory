@@ -1,194 +1,174 @@
-// 보안 강화된 DynamoDB 서비스
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand, PutCommand, UpdateCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
-import credentialsManager from '../utils/credentialsManager.js';
+import AWS from 'aws-sdk';
+import awsCredentials from '../utils/awsCredentials.js';
 
-class SecureDynamoDBService {
-    constructor() {
-        this.client = null;
-        this.docClient = null;
-        this.tableName = process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents';
-        this.initialized = false;
+// AWS DynamoDB 설정 (로컬 credentials 사용)
+let dynamodb = null;
+const TABLE_NAME = process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents';
+
+// DynamoDB 클라이언트 초기화
+const initializeDynamoDB = () => {
+  if (dynamodb) return dynamodb;
+
+  try {
+    console.log('🔐 DynamoDB 클라이언트 초기화 중...');
+    
+    // 로컬 credentials에서 AWS 설정 가져오기
+    const credentials = awsCredentials.getCredentials();
+    
+    AWS.config.update({
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      region: credentials.region
+    });
+
+    dynamodb = new AWS.DynamoDB.DocumentClient();
+    
+    console.log('✅ DynamoDB 설정 완료:', {
+      region: credentials.region,
+      tableName: TABLE_NAME
+    });
+    
+    return dynamodb;
+  } catch (error) {
+    console.error('❌ DynamoDB 초기화 실패:', error);
+    throw error;
+  }
+};
+
+// 모든 콘텐츠 조회
+export const getAllContents = async () => {
+  try {
+    const db = initializeDynamoDB();
+    
+    const params = {
+      TableName: TABLE_NAME
+    };
+
+    console.log('📋 모든 콘텐츠 조회 중...');
+    const result = await db.scan(params).promise();
+    console.log(`✅ ${result.Items.length}개 콘텐츠 조회 완료`);
+    
+    return result.Items || [];
+  } catch (error) {
+    console.error('❌ getAllContents 오류:', error);
+    throw error;
+  }
+};
+
+// ID로 콘텐츠 조회
+export const getContentById = async (id) => {
+  try {
+    const db = initializeDynamoDB();
+    
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id }
+    };
+
+    console.log(`📄 콘텐츠 조회 중 (ID: ${id})`);
+    const result = await db.get(params).promise();
+    
+    if (result.Item) {
+      console.log('✅ 콘텐츠 조회 성공');
+      return result.Item;
+    } else {
+      console.log('⚠️ 콘텐츠를 찾을 수 없음');
+      return null;
     }
+  } catch (error) {
+    console.error('❌ getContentById 오류:', error);
+    throw error;
+  }
+};
 
-    async initialize() {
-        if (this.initialized) return;
+// 콘텐츠 생성
+export const createContent = async (content) => {
+  try {
+    const db = initializeDynamoDB();
+    
+    const item = {
+      ...content,
+      id: content.id || Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-        try {
-            console.log('🔐 DynamoDB 클라이언트 초기화 중...');
-            
-            // 자격 증명 가져오기
-            const config = await credentialsManager.getCredentialsForService('DynamoDB');
-            
-            // DynamoDB 클라이언트 생성
-            this.client = new DynamoDBClient(config);
-            this.docClient = DynamoDBDocumentClient.from(this.client);
-            
-            this.initialized = true;
-            console.log('✅ DynamoDB 클라이언트 초기화 완료');
-        } catch (error) {
-            console.error('❌ DynamoDB 클라이언트 초기화 실패:', error);
-            throw error;
-        }
-    }
+    const params = {
+      TableName: TABLE_NAME,
+      Item: item
+    };
 
-    async getAllContents() {
-        await this.initialize();
-        
-        try {
-            console.log('📋 모든 콘텐츠 가져오기...');
-            
-            const command = new ScanCommand({
-                TableName: this.tableName
-            });
+    console.log('📝 새 콘텐츠 생성 중...');
+    await db.put(params).promise();
+    console.log('✅ 콘텐츠 생성 성공');
+    
+    return item;
+  } catch (error) {
+    console.error('❌ createContent 오류:', error);
+    throw error;
+  }
+};
 
-            const response = await this.docClient.send(command);
-            console.log(`✅ ${response.Items.length}개 콘텐츠 가져오기 성공`);
-            
-            return response.Items || [];
-        } catch (error) {
-            console.error('❌ 콘텐츠 가져오기 실패:', error);
-            throw error;
-        }
-    }
+// 콘텐츠 업데이트
+export const updateContent = async (id, updates) => {
+  try {
+    const db = initializeDynamoDB();
+    
+    const updateExpression = [];
+    const expressionAttributeNames = {};
+    const expressionAttributeValues = {};
 
-    async getContentById(id) {
-        await this.initialize();
-        
-        try {
-            console.log(`📄 콘텐츠 가져오기 (ID: ${id})`);
-            
-            const command = new GetCommand({
-                TableName: this.tableName,
-                Key: { id }
-            });
+    Object.keys(updates).forEach((key, index) => {
+      const attrName = `#attr${index}`;
+      const attrValue = `:val${index}`;
+      
+      updateExpression.push(`${attrName} = ${attrValue}`);
+      expressionAttributeNames[attrName] = key;
+      expressionAttributeValues[attrValue] = updates[key];
+    });
 
-            const response = await this.docClient.send(command);
-            
-            if (response.Item) {
-                console.log('✅ 콘텐츠 가져오기 성공');
-                return response.Item;
-            } else {
-                console.log('⚠️ 콘텐츠를 찾을 수 없음');
-                return null;
-            }
-        } catch (error) {
-            console.error('❌ 콘텐츠 가져오기 실패:', error);
-            throw error;
-        }
-    }
+    // updatedAt 추가
+    updateExpression.push('#updatedAt = :updatedAt');
+    expressionAttributeNames['#updatedAt'] = 'updatedAt';
+    expressionAttributeValues[':updatedAt'] = new Date().toISOString();
 
-    async createContent(content) {
-        await this.initialize();
-        
-        try {
-            console.log('📝 새 콘텐츠 생성 중...');
-            
-            const item = {
-                ...content,
-                id: content.id || Date.now().toString(),
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id },
+      UpdateExpression: `SET ${updateExpression.join(', ')}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: 'ALL_NEW'
+    };
 
-            const command = new PutCommand({
-                TableName: this.tableName,
-                Item: item
-            });
+    console.log(`📝 콘텐츠 업데이트 중 (ID: ${id})`);
+    const result = await db.update(params).promise();
+    console.log('✅ 콘텐츠 업데이트 성공');
+    
+    return result.Attributes;
+  } catch (error) {
+    console.error('❌ updateContent 오류:', error);
+    throw error;
+  }
+};
 
-            await this.docClient.send(command);
-            console.log('✅ 콘텐츠 생성 성공');
-            
-            return item;
-        } catch (error) {
-            console.error('❌ 콘텐츠 생성 실패:', error);
-            throw error;
-        }
-    }
+// 콘텐츠 삭제
+export const deleteContent = async (id) => {
+  try {
+    const db = initializeDynamoDB();
+    
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id }
+    };
 
-    async updateContent(id, updates) {
-        await this.initialize();
-        
-        try {
-            console.log(`📝 콘텐츠 업데이트 중 (ID: ${id})`);
-            
-            const updateExpression = [];
-            const expressionAttributeNames = {};
-            const expressionAttributeValues = {};
-
-            Object.keys(updates).forEach((key, index) => {
-                const attrName = `#attr${index}`;
-                const attrValue = `:val${index}`;
-                
-                updateExpression.push(`${attrName} = ${attrValue}`);
-                expressionAttributeNames[attrName] = key;
-                expressionAttributeValues[attrValue] = updates[key];
-            });
-
-            // updatedAt 추가
-            updateExpression.push('#updatedAt = :updatedAt');
-            expressionAttributeNames['#updatedAt'] = 'updatedAt';
-            expressionAttributeValues[':updatedAt'] = new Date().toISOString();
-
-            const command = new UpdateCommand({
-                TableName: this.tableName,
-                Key: { id },
-                UpdateExpression: `SET ${updateExpression.join(', ')}`,
-                ExpressionAttributeNames: expressionAttributeNames,
-                ExpressionAttributeValues: expressionAttributeValues,
-                ReturnValues: 'ALL_NEW'
-            });
-
-            const response = await this.docClient.send(command);
-            console.log('✅ 콘텐츠 업데이트 성공');
-            
-            return response.Attributes;
-        } catch (error) {
-            console.error('❌ 콘텐츠 업데이트 실패:', error);
-            throw error;
-        }
-    }
-
-    async deleteContent(id) {
-        await this.initialize();
-        
-        try {
-            console.log(`🗑️ 콘텐츠 삭제 중 (ID: ${id})`);
-            
-            const command = new DeleteCommand({
-                TableName: this.tableName,
-                Key: { id }
-            });
-
-            await this.docClient.send(command);
-            console.log('✅ 콘텐츠 삭제 성공');
-            
-            return true;
-        } catch (error) {
-            console.error('❌ 콘텐츠 삭제 실패:', error);
-            throw error;
-        }
-    }
-
-    // 자격 증명 테스트
-    async testConnection() {
-        try {
-            await this.initialize();
-            
-            // 테이블 존재 여부 확인
-            const command = new ScanCommand({
-                TableName: this.tableName,
-                Limit: 1
-            });
-
-            await this.docClient.send(command);
-            console.log('✅ DynamoDB 연결 테스트 성공');
-            return true;
-        } catch (error) {
-            console.error('❌ DynamoDB 연결 테스트 실패:', error);
-            return false;
-        }
-    }
-}
-
-export default new SecureDynamoDBService();
+    console.log(`🗑️ 콘텐츠 삭제 중 (ID: ${id})`);
+    await db.delete(params).promise();
+    console.log('✅ 콘텐츠 삭제 성공');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ deleteContent 오류:', error);
+    throw error;
+  }
+};
