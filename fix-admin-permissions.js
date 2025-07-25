@@ -1,13 +1,77 @@
 #!/usr/bin/env node
 
 const AWS = require('aws-sdk');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 require('dotenv').config();
 
-// AWS 설정
+// 로컬 AWS credentials 읽기 함수
+const getLocalCredentials = () => {
+  try {
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const profileName = process.env.AWS_PROFILE || 'default';
+    
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`AWS credentials 파일을 찾을 수 없습니다: ${credentialsPath}`);
+    }
+
+    const content = fs.readFileSync(credentialsPath, 'utf8');
+    const profiles = {};
+    let currentProfile = null;
+
+    content.split('\n').forEach(line => {
+      line = line.trim();
+      
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentProfile = line.slice(1, -1);
+        profiles[currentProfile] = {};
+      } else if (line.includes('=') && currentProfile) {
+        const [key, value] = line.split('=').map(s => s.trim());
+        profiles[currentProfile][key] = value;
+      }
+    });
+
+    if (!profiles[profileName]) {
+      throw new Error(`AWS 프로필 '${profileName}'을 찾을 수 없습니다`);
+    }
+
+    const profile = profiles[profileName];
+    
+    if (!profile.aws_access_key_id || !profile.aws_secret_access_key) {
+      throw new Error('AWS 자격 증명이 완전하지 않습니다');
+    }
+
+    console.log(`✅ AWS 자격 증명 로드 성공 (프로필: ${profileName})`);
+    
+    return {
+      accessKeyId: profile.aws_access_key_id,
+      secretAccessKey: profile.aws_secret_access_key,
+      region: 'us-west-2' // Cognito는 us-west-2 리전 사용
+    };
+  } catch (error) {
+    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
+    
+    // 환경 변수 fallback
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('⚠️ 환경 변수에서 AWS 자격 증명 사용');
+      return {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: 'us-west-2'
+      };
+    }
+    
+    throw error;
+  }
+};
+
+// AWS 설정 (로컬 credentials 사용)
+const credentials = getLocalCredentials();
 AWS.config.update({
-  region: 'us-west-2', // Cognito는 us-west-2 리전 사용
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  region: credentials.region,
+  accessKeyId: credentials.accessKeyId,
+  secretAccessKey: credentials.secretAccessKey
 });
 
 const cognito = new AWS.CognitoIdentityServiceProvider();

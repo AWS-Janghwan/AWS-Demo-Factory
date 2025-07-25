@@ -3,12 +3,14 @@ node_modules/
 /.pnp
 .pnp.js
 
-# Environment variables
+# Environment variables (SECURITY CRITICAL)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+.env.staging
 
 # Testing
 /coverage
@@ -16,16 +18,14 @@ node_modules/
 # Production
 /build
 
-# Environment variables
-.env
-
-# Logs
+# Logs (may contain sensitive information)
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+*.log
 
-# Runtime data
+# Runtime data (may contain sensitive information)
 pids
 *.pid
 *.seed
@@ -127,18 +127,18 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Markdown files (except README.md)
+# Markdown files (except README.md) - SECURITY: May contain sensitive info
 *.md
 !README.md
 
-# Log files
-*.log
-
-# Backup files
+# Backup files (SECURITY CRITICAL)
 *.backup
 *.bak
+*.old
+*.orig
+*.tmp
 
-# Python virtual environment
+# Python virtual environment (SECURITY: May contain cached credentials)
 python-pdf-server/venv/
 __pycache__/
 *.pyc
@@ -146,7 +146,7 @@ __pycache__/
 *.pyd
 .Python
 
-# IDE files
+# IDE files (SECURITY: May contain project secrets)
 .vscode/
 .idea/
 *.swp
@@ -161,6 +161,68 @@ __pycache__/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# AWS and deployment files (SECURITY CRITICAL)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+aws-credentials.json
+credentials.json
+service-account.json
+*.zip
+deployment-*.zip
+
+# Process ID files (SECURITY: May reveal system info)
+*.pid
+
+# Database files (SECURITY: May contain sensitive data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration files that may contain secrets
+config.json
+secrets.json
+private.json
+
+# Terraform files (SECURITY: May contain infrastructure secrets)
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+
+# Docker files that may contain secrets
+docker-compose.override.yml
+.dockerignore
+
+# Certificate files (SECURITY CRITICAL)
+*.csr
+*.der
+*.p7b
+*.p7c
+*.p7r
+*.spc
+
+# SSH keys (SECURITY CRITICAL)
+id_rsa
+id_rsa.pub
+id_dsa
+id_dsa.pub
+id_ecdsa
+id_ecdsa.pub
+id_ed25519
+id_ed25519.pub
+
+# GPG keys (SECURITY CRITICAL)
+*.gpg
+*.asc
+
+# Local development overrides
+.env.override
+.env.development.override
+.env.production.override
 .env.local
 .env.development.local
 .env.test.local

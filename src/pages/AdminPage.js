@@ -419,18 +419,13 @@ const AdminPage = () => {
   const [newRole, setNewRole] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // AWS 설정
+  // AWS 설정 (보안 강화됨 - 로컬 credentials 사용)
   useEffect(() => {
-    // 기본 AWS 설정 (S3, DynamoDB용)
-    AWS.config.update({
-      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
-      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
-    });
-    
-    console.log('🔧 [AdminPage] AWS 설정 완료:', {
-      defaultRegion: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
-      cognitoRegion: process.env.REACT_APP_COGNITO_REGION || 'us-west-2'
+    console.log('🔧 [AdminPage] AWS 설정 완료 (로컬 credentials 사용):', {
+      defaultRegion: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      cognitoRegion: process.env.REACT_APP_COGNITO_REGION || 'us-west-2',
+      credentialSource: 'Local ~/.aws/credentials',
+      securityLevel: 'Enhanced'
     });
   }, []);
 

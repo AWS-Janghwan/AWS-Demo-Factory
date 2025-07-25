@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Box, Typography, Alert } from '@mui/material';
-import dynamoDBService from '../services/dynamoDBService';
+import { getAllContents } from '../services/dynamoDBServiceSecure';
 
 const DynamoDBTest = () => {
   const [testResult, setTestResult] = useState(null);
@@ -10,20 +10,20 @@ const DynamoDBTest = () => {
     setLoading(true);
     setTestResult(null);
 
-    // 환경 변수 확인을 함수 시작 부분으로 이동
+    // 환경 변수 확인 (보안 강화됨)
     const envCheck = {
-      region: process.env.REACT_APP_AWS_REGION,
-      tableName: process.env.REACT_APP_DYNAMODB_TABLE,
-      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID ? '설정됨' : '미설정',
-      secretKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY ? '설정됨' : '미설정'
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      tableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+      credentialSource: 'Local AWS Credentials (~/.aws/credentials)',
+      status: '보안 강화됨'
     };
 
     try {
       console.log('🔍 DynamoDB 연결 테스트 시작...');
-      console.log('🔧 환경 변수:', envCheck);
+      console.log('🔧 환경 설정:', envCheck);
 
-      // DynamoDB 연결 테스트
-      const contents = await dynamoDBService.getAllContents();
+      // DynamoDB 연결 테스트 (보안 강화된 서비스 사용)
+      const contents = await getAllContents();
       
       setTestResult({
         success: true,

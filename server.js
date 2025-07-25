@@ -3,31 +3,112 @@ const cors = require('cors');
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// 로컬 AWS credentials 읽기 함수
+const getLocalCredentials = () => {
+  try {
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const profileName = process.env.AWS_PROFILE || 'default';
+    
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`AWS credentials 파일을 찾을 수 없습니다: ${credentialsPath}`);
+    }
+
+    const content = fs.readFileSync(credentialsPath, 'utf8');
+    const profiles = {};
+    let currentProfile = null;
+
+    content.split('\n').forEach(line => {
+      line = line.trim();
+      
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentProfile = line.slice(1, -1);
+        profiles[currentProfile] = {};
+      } else if (line.includes('=') && currentProfile) {
+        const [key, value] = line.split('=').map(s => s.trim());
+        profiles[currentProfile][key] = value;
+      }
+    });
+
+    if (!profiles[profileName]) {
+      throw new Error(`AWS 프로필 '${profileName}'을 찾을 수 없습니다`);
+    }
+
+    const profile = profiles[profileName];
+    
+    if (!profile.aws_access_key_id || !profile.aws_secret_access_key) {
+      throw new Error('AWS 자격 증명이 완전하지 않습니다');
+    }
+
+    console.log(`✅ AWS 자격 증명 로드 성공 (프로필: ${profileName})`);
+    
+    return {
+      accessKeyId: profile.aws_access_key_id,
+      secretAccessKey: profile.aws_secret_access_key,
+      region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+    };
+  } catch (error) {
+    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
+    
+    // 환경 변수 fallback
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('⚠️ 환경 변수에서 AWS 자격 증명 사용');
+      return {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+      };
+    }
+    
+    throw error;
+  }
+};
 
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'build')));
 
-// AWS S3 설정
-const s3 = new AWS.S3({
-  region: 'ap-northeast-2',
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  signatureVersion: 'v4'
-});
+// AWS S3 설정 (로컬 credentials 사용)
+let s3 = null;
+
+const initializeS3 = () => {
+  if (s3) return s3;
+
+  try {
+    console.log('🔐 S3 클라이언트 초기화 중...');
+    
+    const credentials = getLocalCredentials();
+    
+    s3 = new AWS.S3({
+      region: credentials.region,
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      signatureVersion: 'v4'
+    });
+    
+    console.log('✅ S3 클라이언트 초기화 완료');
+    return s3;
+  } catch (error) {
+    console.error('❌ S3 클라이언트 초기화 실패:', error);
+    throw error;
+  }
+};
 
 // S3 버킷 이름
-const BUCKET_NAME = 'aws-demo-factory';
+const BUCKET_NAME = 'demo-factory-storage-bucket';
 
 // S3 버킷 존재 여부 확인
 const checkBucketExists = async () => {
   try {
-    await s3.headBucket({ Bucket: BUCKET_NAME }).promise();
-    console.log(`S3 bucket '${BUCKET_NAME}' exists and is accessible.`);
+    const s3Client = initializeS3();
+    await s3Client.headBucket({ Bucket: BUCKET_NAME }).promise();
+    console.log(`✅ S3 bucket '${BUCKET_NAME}' exists and is accessible.`);
     return true;
   } catch (error) {
     if (error.statusCode === 404) {
