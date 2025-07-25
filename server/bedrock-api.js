@@ -1,10 +1,103 @@
-// Amazon Bedrock API 서버
+// Amazon Bedrock API 서버 (로컬 credentials 사용)
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// 로컬 AWS credentials 읽기 함수
+const getLocalCredentials = () => {
+  try {
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const profileName = process.env.AWS_PROFILE || 'default';
+    
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`AWS credentials 파일을 찾을 수 없습니다: ${credentialsPath}`);
+    }
+
+    const content = fs.readFileSync(credentialsPath, 'utf8');
+    const profiles = {};
+    let currentProfile = null;
+
+    content.split('\n').forEach(line => {
+      line = line.trim();
+      
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentProfile = line.slice(1, -1);
+        profiles[currentProfile] = {};
+      } else if (line.includes('=') && currentProfile) {
+        const [key, value] = line.split('=').map(s => s.trim());
+        profiles[currentProfile][key] = value;
+      }
+    });
+
+    if (!profiles[profileName]) {
+      throw new Error(`AWS 프로필 '${profileName}'을 찾을 수 없습니다`);
+    }
+
+    const profile = profiles[profileName];
+    
+    if (!profile.aws_access_key_id || !profile.aws_secret_access_key) {
+      throw new Error('AWS 자격 증명이 완전하지 않습니다');
+    }
+
+    console.log(`✅ AWS 자격 증명 로드 성공 (프로필: ${profileName})`);
+    
+    return {
+      accessKeyId: profile.aws_access_key_id,
+      secretAccessKey: profile.aws_secret_access_key,
+      region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+    };
+  } catch (error) {
+    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
+    
+    // 환경 변수 fallback
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('⚠️ 환경 변수에서 AWS 자격 증명 사용');
+      return {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+      };
+    }
+    
+    throw error;
+  }
+};
+
+// Bedrock 클라이언트 초기화
+let bedrockClient = null;
+
+const initializeBedrockClient = () => {
+  if (bedrockClient) return bedrockClient;
+
+  try {
+    console.log('🔐 Bedrock 클라이언트 초기화 중...');
+    
+    const credentials = getLocalCredentials();
+    
+    bedrockClient = new BedrockRuntimeClient({
+      region: credentials.region,
+      credentials: {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey
+      }
+    });
+    
+    console.log('✅ Bedrock 클라이언트 초기화 완료:', {
+      region: credentials.region
+    });
+    
+    return bedrockClient;
+  } catch (error) {
+    console.error('❌ Bedrock 클라이언트 초기화 실패:', error);
+    throw error;
+  }
+};
 
 // CORS 설정
 app.use(cors({
