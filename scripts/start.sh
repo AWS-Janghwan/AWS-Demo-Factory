@@ -14,13 +14,15 @@ if [ ! -f "build/index.html" ]; then
     npm run build
 fi
 
-# 프로덕션 서버 시작
-echo "🔄 프로덕션 서버 시작 중..."
-if ./start-production.sh > server-start.log 2>&1; then
-    echo "✅ 프로덕션 서버 시작 완료"
+# 정적 파일 서버 문제 해결 및 시작
+echo "🔧 정적 파일 서버 문제 해결 중..."
+if ./fix-static-server.sh > server-start.log 2>&1; then
+    echo "✅ 모든 서버 시작 완료"
 else
-    echo "⚠️ 프로덕션 서버 시작 중 오류 발생"
+    echo "⚠️ 서버 시작 중 오류 발생"
     echo "📄 로그 파일 확인: server-start.log"
+    echo "🔄 대체 방법으로 서버 시작 시도..."
+    ./start-production.sh >> server-start.log 2>&1
 fi
 
 # 짧은 대기 후 상태 확인
