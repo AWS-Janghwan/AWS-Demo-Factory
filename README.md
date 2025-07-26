@@ -214,8 +214,15 @@ cd AWS-Demo-Factory
 # Node.js 의존성 설치
 npm install
 
-# Python 의존성 설치
+# Python 의존성 설치 (uv 권장 - 고속)
+# uv 설치 (처음만)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.cargo/bin:$PATH"
+
 cd python-pdf-server
+# uv로 고속 설치 (권장)
+uv pip install -r requirements.txt
+# 또는 기존 pip 사용
 pip install -r requirements.txt
 cd ..
 ```

@@ -30,9 +30,16 @@ cd python-pdf-server
 # 가상환경 확인 및 활성화
 if [ ! -d "venv" ]; then
     echo "📦 Python 가상환경 생성 중..."
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    # uv로 가상환경 및 패키지 설치 (고속)
+    if command -v uv >/dev/null 2>&1; then
+        uv venv venv
+        source venv/bin/activate
+        uv pip install -r requirements-fast.txt
+    else
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements-minimal.txt
+    fi
 else
     source venv/bin/activate
 fi

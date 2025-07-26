@@ -20,9 +20,14 @@ fi
 echo "🔧 가상환경 활성화..."
 source python-pdf-server/venv/bin/activate
 
-# 의존성 설치
+# 의존성 설치 (uv 우선)
 echo "📦 Python 패키지 설치 중..."
-pip install -r python-pdf-server/requirements.txt
+if command -v uv >/dev/null 2>&1; then
+    echo "⚡ uv로 고속 설치 중..."
+    uv pip install -r python-pdf-server/requirements.txt
+else
+    pip install -r python-pdf-server/requirements.txt
+fi
 
 # 서버 시작
 echo "🚀 Python PDF 서버 시작 중..."

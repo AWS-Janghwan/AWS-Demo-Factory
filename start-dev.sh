@@ -49,7 +49,13 @@ fi
 
 # 가상환경 활성화 및 의존성 설치
 source venv/bin/activate
-pip install -r requirements.txt > /dev/null 2>&1
+# uv 사용 가능하면 고속 설치
+if command -v uv >/dev/null 2>&1; then
+    echo "⚡ uv로 고속 설치 중..."
+    uv pip install -r requirements.txt > /dev/null 2>&1
+else
+    pip install -r requirements.txt > /dev/null 2>&1
+fi
 
 # Python 서버 백그라운드 실행
 python3 app.py &

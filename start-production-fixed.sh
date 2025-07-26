@@ -22,10 +22,17 @@ cd python-pdf-server
 # 가상환경 활성화 확인
 if [ ! -d "venv" ]; then
     echo "❌ Python 가상환경이 없습니다. 생성 중..."
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install --upgrade pip
-    pip install flask flask-cors requests python-dotenv reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF
+    # uv로 가상환경 및 패키지 설치 (고속)
+    if command -v uv >/dev/null 2>&1; then
+        uv venv venv
+        source venv/bin/activate
+        uv pip install -r requirements.txt
+    else
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install flask flask-cors requests python-dotenv reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF
+    fi
 else
     source venv/bin/activate
 fi
@@ -33,7 +40,11 @@ fi
 # Flask 모듈 확인
 python -c "import flask" 2>/dev/null || {
     echo "❌ Flask 모듈이 없습니다. 설치 중..."
-    pip install flask flask-cors requests python-dotenv reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF
+    if command -v uv >/dev/null 2>&1; then
+        uv pip install flask flask-cors requests python-dotenv reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF
+    else
+        pip install flask flask-cors requests python-dotenv reportlab matplotlib pandas numpy seaborn Pillow PyMuPDF
+    fi
 }
 
 # Python 서버 시작

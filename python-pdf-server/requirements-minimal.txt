@@ -1,5 +1,6 @@
-flask==3.0.3
-flask-cors==4.0.1
-requests==2.31.0
-python-dotenv==1.0.1
-reportlab==4.2.2
+# uv 최적화된 최소 패키지 (빠른 설치)
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+reportlab>=4.0.0
