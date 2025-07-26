@@ -112,11 +112,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 
-// Bedrock 클라이언트 설정 - 로컬 AWS 자격 증명 사용
-const bedrockClient = new BedrockRuntimeClient({
-  region: 'us-west-2'
-});
-
 // Claude 4 Sonnet Inference Profile (US West 2)
 const CLAUDE_MODEL_ID = 'us.anthropic.claude-sonnet-4-20250514-v1:0';
 

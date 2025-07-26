@@ -66,12 +66,12 @@ BEDROCK_PID=$!
 echo $BEDROCK_PID > bedrock-server.pid
 echo "✅ Bedrock API 서버 시작됨 (PID: $BEDROCK_PID, 포트: 5001)"
 
-# 3. 백엔드 서버 시작 (포트 5004)
+# 3. 백엔드 서버 시작 (포트 3001)
 echo "🖥️ 백엔드 서버 시작 중..."
 node backend-api-server.js &
 BACKEND_PID=$!
 echo $BACKEND_PID > backend-server.pid
-echo "✅ 백엔드 서버 시작됨 (PID: $BACKEND_PID, 포트: 5004)"
+echo "✅ 백엔드 서버 시작됨 (PID: $BACKEND_PID, 포트: 3001)"
 
 # 서버 시작 대기
 sleep 5
@@ -94,7 +94,7 @@ else
 fi
 
 # 백엔드 API 테스트
-if curl -s http://localhost:5004/api/health > /dev/null; then
+if curl -s http://localhost:3001/api/health > /dev/null; then
   echo "✅ 백엔드 서버 정상 동작"
 else
   echo "⚠️ 백엔드 서버 응답 없음"
@@ -106,12 +106,12 @@ echo ""
 echo "📋 서버 정보:"
 echo "  🐍 Python PDF: http://localhost:5002"
 echo "  🤖 Bedrock API: http://localhost:5001"
-echo "  🖥️ 백엔드 API: http://localhost:5004"
+echo "  🖥️ 백엔드 API: http://localhost:3001"
 echo ""
 echo "🔗 주요 URL:"
 echo "  🧪 PDF 테스트: http://localhost:5002/test-pdf"
 echo "  🤖 AI 기능 테스트: http://localhost:5001/api/bedrock/test"
-echo "  📧 이메일 API: http://localhost:5004/api/health"
+echo "  📧 이메일 API: http://localhost:3001/api/health"
 echo ""
 
 # 종료 시그널 처리
