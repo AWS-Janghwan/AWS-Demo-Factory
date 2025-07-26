@@ -34,21 +34,59 @@ rm -rf build/
 rm -rf node_modules/.cache/
 echo "✅ 기존 빌드 파일 정리 완료"
 
-# 3. npm 패키지 설치
+# 3. npm 패키지 설치 (devDependencies 포함)
 echo "📦 npm 패키지 설치 중..."
-if npm ci --silent; then
-    echo "✅ npm 패키지 설치 완료"
-else
-    echo "⚠️ npm ci 실패, npm install 시도 중..."
-    npm install --silent
+# 먼저 기존 node_modules 완전 삭제
+rm -rf node_modules package-lock.json
+
+# 전체 의존성 설치 (devDependencies 포함)
+if npm install --silent; then
     echo "✅ npm install 완료"
+else
+    echo "❌ npm install 실패"
+    exit 1
 fi
 
-# 4. React 앱 빌드
-echo "⚛️ React 앱 빌드 중..."
+# Babel 플러그인 설치 확인
+echo "🔧 Babel 의존성 확인 중..."
+if [ ! -d "node_modules/@babel/plugin-proposal-private-property-in-object" ]; then
+    echo "📦 누락된 Babel 플러그인 직접 설치 중..."
+    npm install @babel/plugin-proposal-private-property-in-object --save-dev --silent
+    echo "✅ Babel 플러그인 설치 완룼"
+else
+    echo "✅ Babel 플러그인 이미 설치됨"
+fi
+
+# 추가 필수 Babel 의존성 설치
+echo "🔧 추가 Babel 의존성 설치 중..."
+npm install @babel/core @babel/preset-env @babel/preset-react --save-dev --silent 2>/dev/null || true
+
+# 설치 확인
+echo "🔍 설치된 패키지 확인..."
+if [ -d "node_modules/@babel/plugin-proposal-private-property-in-object" ]; then
+    echo "✅ @babel/plugin-proposal-private-property-in-object: 설치됨"
+else
+    echo "❌ @babel/plugin-proposal-private-property-in-object: 누락"
+fi
+
+echo "✅ npm 패키지 설치 완료"
+
+# 4. React 앱 빌드 준비
+echo "⚛️ React 앱 빌드 준비 중..."
+
+# Browserslist 데이터베이스 업데이트
+echo "🔄 Browserslist 데이터베이스 업데이트 중..."
+npx update-browserslist-db@latest --silent 2>/dev/null || true
+echo "✅ Browserslist 업데이트 완료"
+
 # AWS 자격 증명 환경 변수 정리 (보안)
+echo "🔐 AWS 자격 증명 환경 변수 정리 중..."
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
+echo "✅ 환경 변수 정리 완료"
+
+# React 빌드 실행
+echo "🔨 React 앱 빌드 시작..."
 
 if npm run build; then
     echo "✅ React 빌드 완료"
