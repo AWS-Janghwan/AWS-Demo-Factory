@@ -68,9 +68,10 @@ export const getSmartUrl = async (s3Key, forceRefresh = false) => {
       }
     }
     
-    // 백엔드 API를 통한 새로운 URL 생성
+    // 백엔드 API를 통한 새로운 URL 생성 (환경별 동적 URL)
     console.log(`🔄 [URLManager] 백엔드를 통한 URL 생성: ${s3Key}`);
-    const newUrl = `${BACKEND_API_URL}/api/s3/file/${encodeURIComponent(s3Key)}`;
+    const backendBaseUrl = process.env.REACT_APP_BACKEND_API_URL || BACKEND_API_URL;
+    const newUrl = `${backendBaseUrl}/api/s3/file/${encodeURIComponent(s3Key)}`;
     
     // 캐시에 저장
     storeUrlInfo(s3Key, newUrl, 86400);

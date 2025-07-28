@@ -32,6 +32,7 @@ const AccessPurposeModal = () => {
     if (selectedPurpose) {
       setAccessPurpose(selectedPurpose);
       sessionStorage.setItem("accessPurpose", selectedPurpose);
+      sessionStorage.setItem("accessPurposeModalShown", "true"); // 모달 표시 기록
     } else {
       console.warn("⚠️ [AccessPurposeModal] 선택된 목적이 없음");
     }
@@ -41,6 +42,7 @@ const AccessPurposeModal = () => {
     console.log("⏭️ [AccessPurposeModal] Skip 버튼 클릭");
     skipPurposeSelection();
     sessionStorage.setItem("accessPurpose", "Skipped");
+    sessionStorage.setItem("accessPurposeModalShown", "true"); // 모달 표시 기록
   };
 
   return (

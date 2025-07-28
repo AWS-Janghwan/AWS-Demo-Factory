@@ -99,15 +99,27 @@ const initializeBedrockClient = () => {
   }
 };
 
-// CORS 설정
+// CORS 설정 (포괄적 도메인 지원)
 app.use(cors({
   origin: [
-    'http://localhost:3000', 
+    'http://localhost:3000',
     'http://localhost:3001',
     'https://demofactory.cloud',
-    'https://www.demofactory.cloud'
+    'https://www.demofactory.cloud',
+    'https://awsdemofactory.cloud',
+    'https://www.awsdemofactory.cloud'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control'
+  ],
+  maxAge: 86400
 }));
 
 app.use(express.json({ limit: '10mb' }));

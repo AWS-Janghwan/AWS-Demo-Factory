@@ -44,11 +44,10 @@ export const AnalyticsProvider = ({ children }) => {
     console.log('🚀 AnalyticsContext 초기화 시작');
     isInitialized.current = true;
     
-    // 임시로 localStorage 데이터 로드 비활성화 (오류 해결용)
+    // localStorage 데이터만 정리 (세션 데이터는 유지)
     try {
       localStorage.removeItem('demoFactoryAnalytics'); // 기존 데이터 제거
-      sessionStorage.removeItem('accessPurpose'); // 세션 데이터도 제거
-      console.log('🗑️ localStorage 데이터 정리 완료');
+      console.log('🗑️ localStorage 데이터 정리 완료 (세션 데이터는 유지)');
     } catch (cleanupError) {
       console.error('❌ localStorage 정리 실패:', cleanupError);
     }
@@ -59,9 +58,14 @@ export const AnalyticsProvider = ({ children }) => {
 
     // Check if user has already selected purpose in this session
     const sessionPurpose = sessionStorage.getItem('accessPurpose');
-    console.log('🔍 세션에서 접속 목적 확인:', sessionPurpose);
+    const modalShownKey = 'accessPurposeModalShown';
+    const modalShown = sessionStorage.getItem(modalShownKey);
     
-    if (sessionPurpose) {
+    console.log('🔍 세션에서 접속 목적 확인:', sessionPurpose);
+    console.log('🔍 모달 표시 여부 확인:', modalShown);
+    
+    if (sessionPurpose && modalShown) {
+      // 이미 세션에서 목적을 선택했고 모달도 표시된 경우
       setCurrentAccessPurpose(sessionPurpose);
       
       const today = new Date().toISOString().split('T')[0];
@@ -73,9 +77,12 @@ export const AnalyticsProvider = ({ children }) => {
       } else {
         console.log('👥 이미 오늘 추적된 방문자 (기존 세션)');
       }
-    } else {
-      console.log('🎯 접속 목적 미설정 - 팝업 표시');
+    } else if (!modalShown) {
+      // 세션에서 모달을 아직 보여주지 않은 경우만 표시
+      console.log('🎯 세션 최초 접속 - 목적 선택 모달 표시');
       setShowPurposeModal(true);
+    } else {
+      console.log('👍 이미 이번 세션에서 모달을 보여주었음 - 생략');
     }
   }, []);
 

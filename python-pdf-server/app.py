@@ -17,8 +17,10 @@ CORS(app, origins=[
     'http://localhost:3000', 
     'http://localhost:3001',
     'https://demofactory.cloud',
-    'https://www.demofactory.cloud'
-])
+    'https://www.demofactory.cloud',
+    'https://awsdemofactory.cloud',
+    'https://www.awsdemofactory.cloud'
+], supports_credentials=True, max_age=86400)
 
 @app.route('/health', methods=['GET'])
 def health_check():

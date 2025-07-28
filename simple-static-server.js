@@ -23,6 +23,17 @@ const mimeTypes = {
 
 // API 프록시 함수
 const proxyToBackend = (req, res) => {
+  // OPTIONS 요청 직접 처리
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
   const backendPort = 3001;
   const options = {
     hostname: 'localhost',
@@ -36,7 +47,15 @@ const proxyToBackend = (req, res) => {
     // CORS 헤더 추가
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // OPTIONS 요청 처리
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
     
     res.writeHead(proxyRes.statusCode, proxyRes.headers);
     proxyRes.pipe(res);
@@ -64,6 +83,16 @@ const server = http.createServer((req, res) => {
   // API 프록시 처리
   if (pathname.startsWith('/api/')) {
     return proxyToBackend(req, res);
+  }
+  
+  // OPTIONS 요청 처리 (CORS preflight)
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.writeHead(200);
+    res.end();
+    return;
   }
   
   // 루트 경로는 index.html로 리다이렉트

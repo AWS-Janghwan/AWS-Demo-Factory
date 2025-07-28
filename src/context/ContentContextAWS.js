@@ -59,12 +59,17 @@ export const ContentProvider = ({ children }) => {
                     return file;
                   }
                   
-                  // S3 키가 있으면 백엔드 스트리밍 URL 생성
+                  // S3 키가 있으면 백엔드 스트리밍 URL 생성 (환경별 동적 URL)
                   if (file.s3Key) {
                     try {
                       const encodedS3Key = encodeURIComponent(file.s3Key);
-                      const streamingUrl = `http://localhost:3001/api/s3/file/${encodedS3Key}`;
-                      console.log('🔒 [ContentContext] 백엔드 스트리밍 URL 생성:', file.name);
+                      // 환경별 백엔드 URL 생성
+                      const backendBaseUrl = process.env.REACT_APP_BACKEND_API_URL || 
+                                            (window.location.protocol === 'https:' ? 
+                                             `https://${window.location.hostname}` : 
+                                             'http://localhost:3001');
+                      const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
+                      console.log('🔒 [ContentContext] 백엔드 스트리밍 URL 생성:', file.name, streamingUrl);
                       return {
                         ...file,
                         url: streamingUrl,
@@ -316,8 +321,14 @@ export const ContentProvider = ({ children }) => {
         throw new Error('업데이트할 콘텐츠를 찾을 수 없습니다');
       }
       
-      // TODO: 백엔드를 통한 업데이트 기능 추가 필요
-      // const updatedContent = await updateContentInBackend(id, updatedData);
+      // 백엔드를 통한 업데이트
+      try {
+        const updatedContent = await saveContentToBackend({ ...existingContent, ...updatedData, updatedAt: new Date().toISOString() });
+        console.log('✅ DynamoDB에 콘텐츠 업데이트 성공:', id);
+      } catch (backendError) {
+        console.warn('⚠️ DynamoDB 업데이트 실패, 로컬만 업데이트:', backendError.message);
+      }
+      
       const updatedContent = { ...existingContent, ...updatedData, updatedAt: new Date().toISOString() };
       
       // 로컬 상태 업데이트
@@ -397,9 +408,13 @@ export const ContentProvider = ({ children }) => {
         return file.url || null;
       }
 
-      // 백엔드 스트리밍 URL 생성
+      // 백엔드 스트리밍 URL 생성 (환경별 동적 URL)
       const encodedS3Key = encodeURIComponent(file.s3Key);
-      const streamingUrl = `http://localhost:3001/api/s3/file/${encodedS3Key}`;
+      const backendBaseUrl = process.env.REACT_APP_BACKEND_API_URL || 
+                            (window.location.protocol === 'https:' ? 
+                             `https://${window.location.hostname}` : 
+                             'http://localhost:3001');
+      const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
       
       console.log('🔗 [ContentContext] 백엔드 스트리밍 URL 생성 완료:', file.name);
       return streamingUrl;

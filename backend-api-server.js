@@ -105,17 +105,43 @@ console.log('- NODE_ENV:', process.env.NODE_ENV);
 // AWS 초기화 실행
 initializeAWS();
 
-// CORS 설정
+// CORS 설정 (포괄적 도메인 지원)
 app.use(cors({
   origin: [
-    'http://localhost:3000', 
+    'http://localhost:3000',
+    'http://localhost:3001', 
     'https://demofactory.cloud',
-    'https://www.demofactory.cloud'
+    'https://www.demofactory.cloud',
+    'https://awsdemofactory.cloud',
+    'https://www.awsdemofactory.cloud'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'X-File-Name'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  maxAge: 86400 // 24시간 preflight 캐시
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
+
+// OPTIONS 요청 명시적 처리
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  res.sendStatus(200);
+});
 
 // 헬스체크 엔드포인트
 app.get('/health', (req, res) => {

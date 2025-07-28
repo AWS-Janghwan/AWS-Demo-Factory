@@ -12,6 +12,9 @@ cat > .env.production << 'EOF'
 NODE_ENV=production
 REACT_APP_API_BASE_URL=https://www.demofactory.cloud
 REACT_APP_BACKEND_API_URL=https://www.demofactory.cloud
+# 추가 도메인 지원
+# REACT_APP_API_BASE_URL=https://www.awsdemofactory.cloud
+# REACT_APP_BACKEND_API_URL=https://www.awsdemofactory.cloud
 REACT_APP_PDF_SERVER_URL=http://localhost:5002
 REACT_APP_BEDROCK_SERVER_URL=http://localhost:5001
 REACT_APP_COGNITO_REGION=us-west-2
