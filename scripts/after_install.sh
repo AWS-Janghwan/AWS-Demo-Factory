@@ -11,7 +11,7 @@ echo "🌍 환경 변수 설정 중..."
 cat > .env.production << 'EOF'
 NODE_ENV=production
 REACT_APP_API_BASE_URL=https://www.demofactory.cloud
-REACT_APP_BACKEND_API_URL=http://localhost:3001
+REACT_APP_BACKEND_API_URL=https://www.demofactory.cloud:3001
 REACT_APP_PDF_SERVER_URL=https://www.demofactory.cloud:5002
 REACT_APP_BEDROCK_SERVER_URL=https://www.demofactory.cloud:5001
 REACT_APP_COGNITO_REGION=us-west-2
@@ -30,6 +30,20 @@ EOF
 
 cp .env.production .env
 echo "✅ 환경 변수 설정 완료"
+
+# AWS credentials 확인
+echo "🔐 AWS credentials 확인..."
+if [ -f "~/.aws/credentials" ]; then
+    echo "✅ AWS credentials 파일 존재"
+    # 프로필 확인 (보안상 내용은 표시하지 않음)
+    if grep -q "\[default\]" ~/.aws/credentials 2>/dev/null; then
+        echo "✅ default 프로필 존재"
+    else
+        echo "⚠️ default 프로필 없음"
+    fi
+else
+    echo "❌ AWS credentials 파일 없음: ~/.aws/credentials"
+fi
 
 # 2. 기존 빌드 정리 (최소한만)
 echo "🧹 기존 빌드 파일 정리 중..."

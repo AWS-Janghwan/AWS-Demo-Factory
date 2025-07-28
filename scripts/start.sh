@@ -31,7 +31,36 @@ sleep 30
 
 # 통합 서버 상태 확인
 echo "🔍 서버 상태 확인..."
-./unified-server-manager.sh status
+if [ -f "unified-server-manager.sh" ]; then
+    ./unified-server-manager.sh status
+else
+    echo "⚠️ unified-server-manager.sh 파일이 없습니다. 개별 서버 상태 확인..."
+    
+    # 개별 서버 상태 확인
+    echo "📊 포트별 서버 상태:"
+    for port in 3000 3001 5001 5002; do
+        if lsof -i:$port > /dev/null 2>&1; then
+            echo "✅ 포트 $port: 실행 중"
+        else
+            echo "❌ 포트 $port: 중지됨"
+        fi
+    done
+    
+    # 프로세스 확인
+    echo "🔍 관련 프로세스:"
+    ps aux | grep -E "(node|python)" | grep -v grep || echo "관련 프로세스 없음"
+fi
+
+# 배포 환경 동기화 확인
+echo "🔗 배포 환경 동기화 상태 확인..."
+echo "📡 백엔드 API 헬스체크:"
+curl -s --max-time 10 http://localhost:3001/health 2>/dev/null | head -5 || echo "❌ 백엔드 API 응답 없음"
+
+echo "📡 Bedrock API 헬스체크:"
+curl -s --max-time 10 http://localhost:5001/api/bedrock/test 2>/dev/null | head -5 || echo "❌ Bedrock API 응답 없음"
+
+echo "📡 PDF 서버 헬스체크:"
+curl -s --max-time 10 http://localhost:5002/health 2>/dev/null | head -5 || echo "❌ PDF 서버 응답 없음"
 
 echo "⏰ 완료 시간: $(date)"
 echo "🎉 ApplicationStart 단계 완료!" 

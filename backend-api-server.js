@@ -94,6 +94,14 @@ const initializeAWS = () => {
   }
 };
 
+// 환경 변수 디버깅 정보
+console.log('🔧 백엔드 서버 환경 변수:');
+console.log('- AWS_REGION:', process.env.REACT_APP_AWS_REGION || process.env.AWS_DEFAULT_REGION);
+console.log('- S3_BUCKET:', process.env.REACT_APP_S3_BUCKET);
+console.log('- DYNAMODB_TABLE:', process.env.REACT_APP_DYNAMODB_TABLE);
+console.log('- AWS_PROFILE:', process.env.AWS_PROFILE);
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+
 // AWS 초기화 실행
 initializeAWS();
 
@@ -108,6 +116,72 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// 헬스체크 엔드포인트
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'AWS Demo Factory Backend API',
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      AWS_REGION: process.env.REACT_APP_AWS_REGION || process.env.AWS_DEFAULT_REGION,
+      S3_BUCKET: process.env.REACT_APP_S3_BUCKET,
+      DYNAMODB_TABLE: process.env.REACT_APP_DYNAMODB_TABLE
+    }
+  });
+});
+
+// 배포 환경 동기화 상태 확인 엔드포인트
+app.get('/api/deployment/sync-status', async (req, res) => {
+  try {
+    // DynamoDB 연결 테스트
+    const dynamodb = new AWS.DynamoDB.DocumentClient();
+    const testParams = {
+      TableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+      Limit: 1
+    };
+    
+    const dynamoResult = await dynamodb.scan(testParams).promise();
+    
+    // S3 연결 테스트
+    const s3 = new AWS.S3();
+    const s3Params = {
+      Bucket: process.env.REACT_APP_S3_BUCKET || 'aws-demo-factory',
+      MaxKeys: 1
+    };
+    
+    const s3Result = await s3.listObjectsV2(s3Params).promise();
+    
+    res.json({
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      services: {
+        dynamodb: {
+          status: 'connected',
+          table: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+          itemCount: dynamoResult.Count || 0
+        },
+        s3: {
+          status: 'connected',
+          bucket: process.env.REACT_APP_S3_BUCKET || 'aws-demo-factory',
+          objectCount: s3Result.KeyCount || 0
+        }
+      },
+      environment: {
+        region: process.env.REACT_APP_AWS_REGION || process.env.AWS_DEFAULT_REGION,
+        deployment: 'production'
+      }
+    });
+  } catch (error) {
+    console.error('❌ 동기화 상태 확인 실패:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // AWS 설정은 initializeAWS()에서 이미 완료됨
 

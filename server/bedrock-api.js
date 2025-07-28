@@ -123,6 +123,12 @@ const generateTextWithClaude = async (prompt, maxTokens = 4000) => {
     console.log('🤖 Claude 4 Sonnet 호출 시작...');
     console.log('📝 프롬프트 길이:', prompt.length);
     console.log('🎯 모델 ID:', CLAUDE_MODEL_ID);
+    
+    // Bedrock 클라이언트 초기화 확인
+    if (!bedrockClient) {
+      console.log('🔄 Bedrock 클라이언트 초기화 중...');
+      bedrockClient = initializeBedrockClient();
+    }
 
     const requestBody = {
       anthropic_version: "bedrock-2023-05-31",
@@ -886,9 +892,18 @@ app.get('/api/bedrock/test', async (req, res) => {
 });
 
 // 서버 시작
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Bedrock API 서버가 포트 ${PORT}에서 실행 중입니다.`);
-  console.log(`🤖 Claude 4 Sonnet (${CLAUDE_MODEL_ID}) 준비 완료`);
+  
+  // Bedrock 클라이언트 초기화
+  try {
+    bedrockClient = initializeBedrockClient();
+    console.log(`✅ Claude 4 Sonnet (${CLAUDE_MODEL_ID}) 준비 완료`);
+  } catch (error) {
+    console.error('❌ Bedrock 클라이언트 초기화 실패:', error.message);
+    console.log('⚠️ 서버는 시작되었지만 Bedrock 기능은 사용할 수 없습니다.');
+  }
+  
   console.log(`🌍 리전: us-west-2 (Inference Profile)`);
   console.log(`🔗 테스트 URL: http://localhost:${PORT}/api/bedrock/test`);
   console.log(`📊 분석 API: http://localhost:${PORT}/api/bedrock/analytics-insights`);
