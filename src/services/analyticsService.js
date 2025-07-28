@@ -12,6 +12,10 @@ class AnalyticsService {
     try {
       console.log(`📊 [AnalyticsService] 이벤트 추적 시작: ${eventType}`, data);
       
+      // 타임아웃 설정 (5초)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch(`${BACKEND_API_URL}/api/analytics/track`, {
         method: 'POST',
         headers: {
@@ -21,8 +25,11 @@ class AnalyticsService {
           eventType,
           data,
           timestamp: new Date().toISOString()
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       const result = await response.json();
       
@@ -34,7 +41,11 @@ class AnalyticsService {
       }
       
     } catch (error) {
-      console.error(`❌ [AnalyticsService] 이벤트 추적 실패: ${eventType}`, error);
+      if (error.name === 'AbortError') {
+        console.warn(`⏰ [AnalyticsService] 이벤트 추적 타임아웃: ${eventType}`);
+      } else {
+        console.warn(`⚠️ [AnalyticsService] 이벤트 추적 실패: ${eventType}`, error.message);
+      }
       // 분석 데이터 저장 실패는 사용자 경험에 영향을 주지 않도록 조용히 처리
       return { success: false, error: error.message };
     }

@@ -21,11 +21,50 @@ const mimeTypes = {
   '.ico': 'image/x-icon'
 };
 
+// API 프록시 함수
+const proxyToBackend = (req, res) => {
+  const backendPort = 3001;
+  const options = {
+    hostname: 'localhost',
+    port: backendPort,
+    path: req.url,
+    method: req.method,
+    headers: req.headers
+  };
+  
+  const proxyReq = http.request(options, (proxyRes) => {
+    // CORS 헤더 추가
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  
+  proxyReq.on('error', (err) => {
+    console.error('❌ API 프록시 오류:', err);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Backend API unavailable' }));
+  });
+  
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    req.pipe(proxyReq);
+  } else {
+    proxyReq.end();
+  }
+};
+
 const server = http.createServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   
   const parsedUrl = url.parse(req.url);
   let pathname = parsedUrl.pathname;
+  
+  // API 프록시 처리
+  if (pathname.startsWith('/api/')) {
+    return proxyToBackend(req, res);
+  }
   
   // 루트 경로는 index.html로 리다이렉트
   if (pathname === '/') {
