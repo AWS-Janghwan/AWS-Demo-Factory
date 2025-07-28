@@ -100,18 +100,20 @@ export const AnalyticsProvider = ({ children }) => {
     
     setCurrentAccessPurpose(purpose);
     
-    // 백엔드 API를 통해 DynamoDB에 저장
-    try {
-      const analyticsService = (await import('../services/analyticsService')).default;
-      await analyticsService.trackVisitorPurpose(purpose, {
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        referrer: document.referrer
-      });
-      console.log(`✅ DynamoDB에 방문 목적 저장 성공: ${purpose}`);
-    } catch (error) {
-      console.warn(`⚠️ DynamoDB 저장 실패 (로컬 저장으로 대체): ${error.message}`);
-    }
+    // 백엔드 API를 통해 DynamoDB에 저장 (비동기, 비차단)
+    setTimeout(async () => {
+      try {
+        const analyticsService = (await import('../services/analyticsService')).default;
+        await analyticsService.trackVisitorPurpose(purpose, {
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+          referrer: document.referrer
+        });
+        console.log(`✅ DynamoDB에 방문 목적 저장 성공: ${purpose}`);
+      } catch (error) {
+        console.warn(`⚠️ DynamoDB 저장 실패 (로컬 저장으로 대체): ${error.message}`);
+      }
+    }, 100); // 100ms 지연으로 비차단 처리
     
     // Update local analytics (fallback)
     setAnalytics(prev => ({
