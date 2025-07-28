@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -32,7 +32,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { useContent, CATEGORIES } from '../context/ContentContextAWS';
 import { useAuth } from '../context/AuthContextCognito';
-import { uploadFileToS3 } from '../utils/s3Upload';
+import { uploadFileSecurely } from '../services/backendUploadService';
 
 const ContentEditPage = () => {
   const { id } = useParams();
@@ -67,6 +67,9 @@ const ContentEditPage = () => {
   const [tagInput, setTagInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [originalContent, setOriginalContent] = useState(null);
+  
+  // 본문 textarea ref
+  const contentTextareaRef = useRef(null);
 
   // 권한 체크 함수 (useCallback으로 메모이제이션)
   const canEditContent = useCallback((content) => {
@@ -148,19 +151,29 @@ const ContentEditPage = () => {
         console.log(`📁 파일 업로드 시작: ${file.name}`);
 
         try {
-          // S3에 업로드 시도
-          const result = await uploadFileToS3(file, fileType, (progress) => {
+          // 백엔드를 통한 안전한 업로드
+          const result = await uploadFileSecurely(file, id, (progress) => {
             setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
           });
-          fileUrl = result.fileUrl || result;
-          console.log('✅ S3 업로드 성공:', fileUrl);
+          
+          // 백엔드 업로드 서비스 응답 처리
+          if (result && typeof result === 'object') {
+            // 백엔드 스트리밍 URL 사용
+            fileUrl = `http://localhost:3001/api/s3/file/${encodeURIComponent(result.s3Key)}`;
+            console.log('✅ S3 업로드 성공, 스트리밍 URL 생성:', fileUrl);
+          } else if (typeof result === 'string') {
+            fileUrl = result;
+            console.log('✅ S3 업로드 성공:', fileUrl);
+          } else {
+            throw new Error('예상치 못한 업로드 결과 형식');
+          }
         } catch (s3Error) {
           console.warn('⚠️ S3 업로드 실패, 로컬 URL 생성:', s3Error);
           isLocal = true;
         }
 
         // S3 실패 시 또는 URL이 비어있을 때 로컬 blob URL 생성
-        if (isLocal || !fileUrl || fileUrl.trim() === '') {
+        if (isLocal || !fileUrl || (typeof fileUrl === 'string' && fileUrl.trim() === '')) {
           console.log('🔄 로컬 blob URL 생성 중...');
           fileUrl = URL.createObjectURL(file);
           isLocal = true;
@@ -168,7 +181,7 @@ const ContentEditPage = () => {
         }
 
         // 최종 URL 검증
-        if (!fileUrl || fileUrl.trim() === '') {
+        if (!fileUrl || (typeof fileUrl === 'string' && fileUrl.trim() === '')) {
           console.error('❌ 파일 URL 생성 완전 실패');
           throw new Error(`파일 URL 생성 실패: ${file.name}`);
         }
@@ -238,16 +251,44 @@ const ContentEditPage = () => {
     });
   };
 
-  // 본문에 미디어 삽입
+  // 커서 위치에 미디어 삽입
   const insertMediaToContent = (file) => {
     const mediaTag = file.type.startsWith('video/') 
       ? `[video:${file.name}]`
       : `[image:${file.name}]`;
     
-    setFormData(prev => ({
-      ...prev,
-      content: prev.content + '\n\n' + mediaTag + '\n\n'
-    }));
+    const textarea = contentTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentContent = formData.content;
+      
+      // 커서 위치에 미디어 태그 삽입
+      const newContent = 
+        currentContent.substring(0, start) + 
+        '\n' + mediaTag + '\n' + 
+        currentContent.substring(end);
+      
+      setFormData(prev => ({
+        ...prev,
+        content: newContent
+      }));
+      
+      // 커서 위치를 삽입된 텍스트 뒤로 이동
+      setTimeout(() => {
+        const newCursorPos = start + mediaTag.length + 2; // \n + mediaTag + \n
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+      
+      console.log(`✅ 커서 위치에 미디어 삽입 완료: ${mediaTag}`);
+    } else {
+      // fallback: textarea ref가 없으면 기존 방식 사용
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content + '\n\n' + mediaTag + '\n\n'
+      }));
+    }
   };
 
   // 파일 삭제
@@ -611,10 +652,11 @@ const ContentEditPage = () => {
                     return newFormData;
                   });
                 }}
+                inputRef={contentTextareaRef}
                 multiline
                 rows={10}
-                placeholder="마크다운 문법을 사용하여 콘텐츠를 작성하세요...&#10;&#10;미디어 삽입 방법:&#10;- 이미지: [image:파일명]&#10;- 비디오: [video:파일명]&#10;- 또는 업로드된 파일의 '+' 버튼을 클릭하세요"
-                helperText="마크다운 문법을 지원합니다. 업로드한 미디어 파일은 [image:파일명] 또는 [video:파일명] 태그로 본문에 삽입할 수 있습니다."
+                placeholder="마크다운 문법을 사용하여 콘텐츠를 작성하세요...&#10;&#10;미디어 삽입 방법:&#10;- 이미지: [image:파일명]&#10;- 비디오: [video:파일명]&#10;- 또는 업로드된 파일의 '+' 버튼을 클릭하여 커서 위치에 삽입하세요"
+                helperText="마크다운 문법을 지원합니다. '+' 버튼을 클릭하면 커서 위치에 미디어 태그가 삽입됩니다."
               />
             </Paper>
           </Grid>

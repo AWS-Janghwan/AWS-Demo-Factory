@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Container, Grid, Typography, Link as MuiLink, Divider } from '@mui/material';
 import { Link } from 'react-router-dom';
+import SupportInquiryModal from './SupportInquiryModal';
 
 const Footer = () => {
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+
   return (
     <Box
       component="footer"
@@ -46,10 +49,18 @@ const Footer = () => {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
               <MuiLink 
-                href="mailto:janghwan@amazon.com" 
+                component="button"
+                onClick={() => setShowInquiryModal(true)}
                 color="inherit" 
                 underline="hover" 
-                sx={{ fontSize: '0.8rem' }}
+                sx={{ 
+                  fontSize: '0.8rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  padding: 0
+                }}
               >
                 📧 문의하기
               </MuiLink>
@@ -82,6 +93,12 @@ const Footer = () => {
           </Typography>
         </Box>
       </Container>
+      
+      {/* 문의하기 모달 */}
+      <SupportInquiryModal 
+        open={showInquiryModal}
+        onClose={() => setShowInquiryModal(false)}
+      />
     </Box>
   );
 };

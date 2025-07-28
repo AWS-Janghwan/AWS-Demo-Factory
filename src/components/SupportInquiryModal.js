@@ -88,7 +88,7 @@ const SupportInquiryModal = ({ open, onClose }) => {
 
     try {
       // AWS SES를 사용한 실제 API 호출
-      const response = await fetch('http://localhost:5004/api/send-inquiry', {
+      const response = await fetch('http://localhost:3001/api/send-inquiry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

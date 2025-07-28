@@ -69,9 +69,12 @@ const ContentDetailPage = () => {
             setViewIncremented(true);
           }
           
-          // 하이브리드 파일 시스템에서 모든 파일 로드
+          // 하이브리드 파일 시스템에서 모든 파일 로드 (콘텐츠 파일이 있을 때만)
           try {
-            const globalFiles = await getLocalFiles();
+            let globalFiles = [];
+            if (!foundContent.files || foundContent.files.length === 0) {
+              globalFiles = await getLocalFiles();
+            }
             
             // 콘텐츠 자체의 파일 정보와 전역 파일 목록 병합
             let combinedFiles = [...globalFiles];
@@ -83,14 +86,16 @@ const ContentDetailPage = () => {
               for (const contentFile of foundContent.files) {
                 const existingFile = combinedFiles.find(f => f.name === contentFile.name);
                 if (!existingFile) {
-                  // S3 키가 있으면 보안 URL 생성
-                  if (contentFile.s3Key && !contentFile.url) {
+                  // S3 키가 있으면 보안 URL 생성 (항상 새로 생성)
+                  if (contentFile.s3Key) {
                     try {
                       const secureUrl = await getSecureFileUrl(contentFile, 86400); // 24시간
                       contentFile.url = secureUrl;
-                      console.log(`🔗 [ContentDetailPage] 콘텐츠 파일 보안 URL 생성: ${contentFile.name}`);
+                      console.log(`🔗 [ContentDetailPage] 콘텐츠 파일 보안 URL 생성: ${contentFile.name} -> ${secureUrl?.substring(0, 50)}...`);
                     } catch (urlError) {
                       console.error(`❌ [ContentDetailPage] 콘텐츠 파일 URL 생성 실패: ${contentFile.name}`, urlError);
+                      // URL 생성 실패 시 빈 URL로 설정
+                      contentFile.url = null;
                     }
                   }
                   
@@ -127,7 +132,7 @@ const ContentDetailPage = () => {
     };
 
     fetchContent();
-  }, [id, getContentById, getSecureFileUrl, incrementViews, trackPageView]); // 필요한 의존성들 추가
+  }, [id]); // id만 의존성으로 설정하여 무한 렌더링 방지
 
   // 수정/삭제 권한 체크 함수
   const canEditContent = () => {

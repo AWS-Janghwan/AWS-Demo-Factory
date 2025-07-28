@@ -1,14 +1,53 @@
 import AWS from 'aws-sdk';
+import { getLocalCredentials } from '../utils/localCredentials';
 
-// AWS 설정
-const awsConfig = {
-  region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
-  accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
+// AWS 인스턴스 초기화
+let s3Instance = null;
+let dynamodbInstance = null;
+
+// AWS 인스턴스 초기화 함수
+const initializeAWS = async () => {
+  if (s3Instance && dynamodbInstance) {
+    return { s3: s3Instance, dynamodb: dynamodbInstance };
+  }
+  
+  try {
+    console.log('🔧 [AWSStorage] 로컬 AWS credentials 로드 중...');
+    
+    const credentials = await getLocalCredentials();
+    
+    const awsConfig = {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    };
+    
+    s3Instance = new AWS.S3(awsConfig);
+    dynamodbInstance = new AWS.DynamoDB.DocumentClient(awsConfig);
+    
+    console.log('✅ [AWSStorage] AWS 설정 완료:', {
+      region: awsConfig.region,
+      hasCredentials: !!awsConfig.accessKeyId
+    });
+    
+    return { s3: s3Instance, dynamodb: dynamodbInstance };
+  } catch (error) {
+    console.error('❌ [AWSStorage] AWS credentials 로드 실패:', error);
+    
+    // Fallback: 환경 변수 사용
+    const awsConfig = {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
+      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
+    };
+    
+    s3Instance = new AWS.S3(awsConfig);
+    dynamodbInstance = new AWS.DynamoDB.DocumentClient(awsConfig);
+    
+    return { s3: s3Instance, dynamodb: dynamodbInstance };
+  }
 };
-
-const s3 = new AWS.S3(awsConfig);
-const dynamodb = new AWS.DynamoDB.DocumentClient(awsConfig);
 
 // 상수
 const S3_BUCKET = process.env.REACT_APP_S3_BUCKET || 'aws-demo-factory';
@@ -17,6 +56,9 @@ const DYNAMODB_TABLE = process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryConte
 // 대용량 파일 업로드 (Multipart Upload 지원)
 export const uploadLargeFile = async (file, onProgress = () => {}) => {
   try {
+    // AWS 인스턴스 초기화
+    const { s3 } = await initializeAWS();
+    
     const key = `contents/${Date.now()}-${file.name}`;
     
     const params = {
@@ -32,9 +74,9 @@ export const uploadLargeFile = async (file, onProgress = () => {}) => {
 
     // 5MB 이상이면 Multipart Upload 사용
     if (file.size > 5 * 1024 * 1024) {
-      return await uploadMultipart(params, onProgress);
+      return await uploadMultipart(s3, params, onProgress);
     } else {
-      return await uploadSingle(params, onProgress);
+      return await uploadSingle(s3, params, onProgress);
     }
   } catch (error) {
     console.error('파일 업로드 실패:', error);
@@ -43,7 +85,7 @@ export const uploadLargeFile = async (file, onProgress = () => {}) => {
 };
 
 // 단일 파일 업로드
-const uploadSingle = async (params, onProgress) => {
+const uploadSingle = async (s3, params, onProgress) => {
   const upload = s3.upload(params);
   
   upload.on('httpUploadProgress', (progress) => {
@@ -61,7 +103,7 @@ const uploadSingle = async (params, onProgress) => {
 };
 
 // Multipart 업로드
-const uploadMultipart = async (params, onProgress) => {
+const uploadMultipart = async (s3, params, onProgress) => {
   const chunkSize = 5 * 1024 * 1024; // 5MB chunks
   const file = params.Body;
   const totalChunks = Math.ceil(file.size / chunkSize);
@@ -142,7 +184,8 @@ const uploadMultipart = async (params, onProgress) => {
 };
 
 // 스트리밍 URL 생성 (대용량 파일용)
-export const getStreamingUrl = (s3Key, expiresIn = 3600) => {
+export const getStreamingUrl = async (s3Key, expiresIn = 3600) => {
+  const { s3 } = await initializeAWS();
   return s3.getSignedUrl('getObject', {
     Bucket: S3_BUCKET,
     Key: s3Key,
@@ -153,6 +196,7 @@ export const getStreamingUrl = (s3Key, expiresIn = 3600) => {
 // 파일 삭제
 export const deleteFileFromS3 = async (s3Key) => {
   try {
+    const { s3 } = await initializeAWS();
     await s3.deleteObject({
       Bucket: S3_BUCKET,
       Key: s3Key
@@ -183,6 +227,7 @@ export const saveContentMetadata = async (contentData) => {
       Item: item
     };
 
+    const { dynamodb } = await initializeAWS();
     await dynamodb.put(params).promise();
     return item;
   } catch (error) {
@@ -194,6 +239,7 @@ export const saveContentMetadata = async (contentData) => {
 // DynamoDB에서 모든 콘텐츠 조회
 export const getAllContentsFromDynamoDB = async () => {
   try {
+    const { dynamodb } = await initializeAWS();
     const params = {
       TableName: DYNAMODB_TABLE
     };
@@ -209,6 +255,7 @@ export const getAllContentsFromDynamoDB = async () => {
 // 카테고리별 콘텐츠 조회
 export const getContentsByCategory = async (category) => {
   try {
+    const { dynamodb } = await initializeAWS();
     const params = {
       TableName: DYNAMODB_TABLE,
       FilterExpression: 'category = :category',
@@ -228,6 +275,7 @@ export const getContentsByCategory = async (category) => {
 // 특정 콘텐츠 조회
 export const getContentById = async (id) => {
   try {
+    const { dynamodb } = await initializeAWS();
     const params = {
       TableName: DYNAMODB_TABLE,
       Key: { id }
@@ -244,6 +292,7 @@ export const getContentById = async (id) => {
 // 콘텐츠 업데이트
 export const updateContentMetadata = async (id, updates) => {
   try {
+    const { dynamodb } = await initializeAWS();
     const updateExpression = [];
     const expressionAttributeValues = {};
     const expressionAttributeNames = {};
@@ -299,6 +348,7 @@ export const deleteContentFromDynamoDB = async (id) => {
       Key: { id }
     };
 
+    const { dynamodb } = await initializeAWS();
     await dynamodb.delete(params).promise();
     console.log(`콘텐츠 삭제 완료: ${id}`);
   } catch (error) {
@@ -310,6 +360,7 @@ export const deleteContentFromDynamoDB = async (id) => {
 // 조회수 증가
 export const incrementViews = async (id) => {
   try {
+    const { dynamodb } = await initializeAWS();
     const params = {
       TableName: DYNAMODB_TABLE,
       Key: { id },
@@ -372,6 +423,7 @@ export const toggleLike = async (id, userId) => {
       ReturnValues: 'ALL_NEW'
     };
 
+    const { dynamodb } = await initializeAWS();
     const result = await dynamodb.update(params).promise();
     return result.Attributes;
   } catch (error) {
@@ -383,6 +435,8 @@ export const toggleLike = async (id, userId) => {
 // AWS 연결 테스트
 export const testAWSConnection = async () => {
   try {
+    const { s3, dynamodb } = await initializeAWS();
+    
     // S3 연결 테스트
     await s3.headBucket({ Bucket: S3_BUCKET }).promise();
     console.log('✅ S3 연결 성공');

@@ -15,38 +15,26 @@ console.log('🔧 [DynamoDB] 설정 완료:', {
   tableName: TABLE_NAME
 });
 
-// 모든 콘텐츠 조회
+// 모든 콘텐츠 조회 (비활성화 - 백엔드 API 사용)
 export const getAllContents = async () => {
-  try {
-    console.log('📋 [DynamoDB] 모든 콘텐츠 조회 시작...');
-    
-    const params = {
-      TableName: TABLE_NAME
-    };
-    
-    const result = await dynamodb.scan(params).promise();
-    console.log('✅ [DynamoDB] 콘텐츠 조회 성공:', result.Items?.length || 0, '개');
-    
-    return result.Items || [];
-  } catch (error) {
-    console.error('❌ [DynamoDB] 콘텐츠 조회 실패:', error);
-    throw error;
-  }
+  console.warn('⚠️ [DynamoDB] 직접 호출은 비활성화되었습니다. 백엔드 API를 사용하세요.');
+  throw new Error('DynamoDB 직접 접근은 비활성화되었습니다. 백엔드 API를 사용하세요.');
 };
 
-// 콘텐츠 저장
+// 콘텐츠 저장 (비활성화 - 백엔드 API 사용)
 export const saveContent = async (content) => {
-  try {
-    console.log('💾 [DynamoDB] 콘텐츠 저장 시작:', content.id);
-    
-    const params = {
-      TableName: TABLE_NAME,
-      Item: {
-        ...content,
-        createdAt: content.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    };
+  console.warn('⚠️ [DynamoDB] 직접 호출은 비활성화되었습니다. 백엔드 API를 사용하세요.');
+  throw new Error('DynamoDB 직접 접근은 비활성화되었습니다. 백엔드 API를 사용하세요.');
+  
+  /*
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      ...content,
+      createdAt: content.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  };
     
     await dynamodb.put(params).promise();
     console.log('✅ [DynamoDB] 콘텐츠 저장 성공:', content.id);

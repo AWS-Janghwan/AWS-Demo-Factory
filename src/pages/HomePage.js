@@ -21,17 +21,26 @@ import { useAnalytics } from '../context/AnalyticsContext';
 import { getLocalFiles } from '../utils/amplifyConfig';
 import ContentCard from '../components/ContentCard';
 import ContentSlider from '../components/ContentSlider';
+import ContentSearch from '../components/ContentSearch';
+import useContentSearch from '../hooks/useContentSearch';
 
 const HomePage = () => {
   console.log('🏠 [HomePage] 컴포넌트 렌더링 시작');
   
   const { contents, loading, getAllContents, getLatestContents } = useContent();
   const { isContentManager } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredContents, setFilteredContents] = useState([]);
   const [latestContents, setLatestContents] = useState([]);
   const [popularContents, setPopularContents] = useState([]);
   const [allFiles, setAllFiles] = useState([]);
+  
+  // 검색 기능 훅 사용
+  const {
+    searchResults,
+    handleSearch,
+    searchStats,
+    categoryStats,
+    popularTags
+  } = useContentSearch();
 
   // 파일 목록 로드
   useEffect(() => {
@@ -71,23 +80,21 @@ const HomePage = () => {
     
   }, [loading, contents, getAllContents, getLatestContents]);
   
-  // Filter contents based on search query
-  useEffect(() => {
-    if (loading) return;
-    
-    if (searchQuery.trim() === '') {
-      setFilteredContents([]);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const allContents = getAllContents();
-      const filtered = allContents.filter(content => 
-        content.title.toLowerCase().includes(query) ||
-        content.description?.toLowerCase().includes(query) ||
-        (content.tags && content.tags.some(tag => tag.toLowerCase().includes(query)))
-      );
-      setFilteredContents(filtered);
-    }
-  }, [searchQuery, loading, contents, getAllContents]);
+  // 검색 결과 상태 관리
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  
+  // 문의하기 모달 상태
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  
+  // 검색 핸들러
+  const onSearchHandler = (searchParams) => {
+    handleSearch(searchParams);
+    const hasActiveSearch = searchParams.query || 
+                           searchParams.category || 
+                           searchParams.author || 
+                           searchParams.tags.length > 0;
+    setShowSearchResults(hasActiveSearch);
+  };
 
   if (loading) {
     return (
@@ -98,13 +105,13 @@ const HomePage = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       {/* Hero Section */}
       <Box 
         sx={{ 
-          py: 6, 
+          py: 3, 
           px: 4, 
-          mb: 6, 
+          mb: 4, 
           borderRadius: 2, 
           backgroundColor: '#232F3E',
           color: 'white',
@@ -117,44 +124,15 @@ const HomePage = () => {
             AWS의 최신 기술 트렌드와 데모, 튜토리얼, 베스트 프랙티스를 경험해보세요.
           </Typography>
           
-          <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
-            <TextField
-              placeholder="데모, 튜토리얼 등을 검색하세요..."
-              variant="outlined"
-              fullWidth
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ 
-                maxWidth: '800px',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                borderRadius: 1
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            
-            {isContentManager() && (
-              <Button
-                component={Link}
-                to="/upload"
-                variant="contained"
-                color="secondary"
-                startIcon={<AddIcon />}
-                sx={{ 
-                  backgroundColor: '#FF9900',
-                  '&:hover': {
-                    backgroundColor: '#E88B00'
-                  }
-                }}
-              >
-                콘텐츠 작성
-              </Button>
-            )}
+          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+            {/* 검색 컴포넌트 */}
+            <Box sx={{ width: '100%' }}>
+              <ContentSearch
+                onSearch={onSearchHandler}
+                totalResults={showSearchResults ? searchResults.length : contents?.length || 0}
+                loading={loading}
+              />
+            </Box>
           </Box>
         </Box>
         
@@ -174,25 +152,41 @@ const HomePage = () => {
         />
       </Box>
       
-      {/* Search Results (검색 시에만 표시) */}
-      {searchQuery && (
+      {/* 검색 결과 (검색 시에만 표시) */}
+      {showSearchResults && (
         <Box sx={{ mb: 6 }}>
-          <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
-            🔍 Search Results
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h5" component="h2" fontWeight={600}>
+              🔍 검색 결과
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Chip 
+                label={`${searchResults.length}개 결과`} 
+                color="primary" 
+                variant="outlined"
+              />
+              {searchStats.hasActiveSearch && (
+                <Chip 
+                  label={`전체 ${searchStats.totalContents}개 중`} 
+                  size="small" 
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Box>
           
-          {filteredContents.length === 0 ? (
+          {searchResults.length === 0 ? (
             <Card sx={{ p: 4, textAlign: 'center', backgroundColor: '#f5f5f5' }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 검색 결과가 없습니다
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                다른 키워드로 검색해보세요
+                다른 키워드나 필터를 사용해보세요
               </Typography>
             </Card>
           ) : (
             <Grid container spacing={3}>
-              {filteredContents.map((content) => (
+              {searchResults.map((content) => (
                 <Grid item key={content.id} xs={12} sm={6} md={4} lg={3}>
                   <ContentCard content={content} allFiles={allFiles} compact />
                 </Grid>
@@ -203,7 +197,7 @@ const HomePage = () => {
       )}
       
       {/* Latest Content Section (검색하지 않을 때만 표시) */}
-      {!searchQuery && (
+      {!showSearchResults && (
         <>
           <Box sx={{ mb: 6 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -286,6 +280,9 @@ const HomePage = () => {
           </Box>
         </>
       )}
+      
+
+
     </Container>
   );
 };

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import indexedDBStorage from './indexedDBStorage';
 import s3FileService from '../services/s3FileService';
+import * as backendS3Service from '../services/backendS3Service';
 
 /**
  * 앱 설정을 초기화합니다.
@@ -195,21 +196,38 @@ export const getLocalFiles = async () => {
   try {
     console.log('🔄 [getLocalFiles] 파일 목록 새로고침 시작...');
     
-    // 1. S3에서 파일 목록 먼저 시도
+    // 캐시된 데이터가 있으면 사용 (5분 캐시)
+    const cacheKey = 'demo-factory-s3-files';
+    const cacheTime = 5 * 60 * 1000; // 5분
+    const cached = localStorage.getItem(cacheKey);
+    
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < cacheTime) {
+          console.log('💾 [getLocalFiles] 캐시된 데이터 사용');
+          return data;
+        }
+      } catch (e) {
+        console.warn('⚠️ [getLocalFiles] 캐시 데이터 파싱 실패:', e);
+      }
+    }
+    
+    // 1. 백엔드 API를 통해 S3에서 파일 목록 먼저 시도
     let s3Files = [];
     try {
-      s3Files = await s3FileService.getS3Files();
+      s3Files = await backendS3Service.getS3Files();
       if (s3Files.length > 0) {
-        console.log(`☁️ S3에서 ${s3Files.length}개 파일 로드 완료`);
+        console.log(`☁️ 백엔드를 통해 S3에서 ${s3Files.length}개 파일 로드 완료`);
         
-        // S3 파일이 있으면 로컬 저장소는 건너뛰고 S3만 사용
-        const allFiles = [...s3Files];
+        // S3 파일들에 Presigned URL 생성
+        const filesWithUrls = await backendS3Service.generatePresignedUrlsForFiles(s3Files);
         
         // localStorage 메타데이터 업데이트 (S3 URL로)
-        await updateLocalStorageMetadata(allFiles);
+        await updateLocalStorageMetadata(filesWithUrls);
         
-        console.log(`📁 총 ${allFiles.length}개 파일 로드 완료 (S3 우선)`);
-        return allFiles;
+        console.log(`📁 총 ${filesWithUrls.length}개 파일 로드 완료 (S3 우선)`);
+        return filesWithUrls;
       }
     } catch (error) {
       console.warn('⚠️ S3 파일 로드 실패, 로컬 저장소 사용:', error);
@@ -279,6 +297,16 @@ export const getLocalFiles = async () => {
       } catch (error) {
         console.warn('⚠️ localStorage 메타데이터 업데이트 실패:', error);
       }
+    }
+    
+    // 결과를 캐시에 저장
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: allFiles,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.warn('⚠️ [getLocalFiles] 캐시 저장 실패:', e);
     }
     
     return allFiles;

@@ -1,5 +1,7 @@
 // URL 만료 관리 유틸리티
-import secureS3Service from '../services/secureS3Service';
+// import secureS3Service from '../services/secureS3Service'; // 백엔드 API 사용으로 대체
+
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
 
 // URL 메타데이터 저장소 (메모리 캐시)
 const urlCache = new Map();
@@ -66,9 +68,9 @@ export const getSmartUrl = async (s3Key, forceRefresh = false) => {
       }
     }
     
-    // 새로운 URL 생성
-    console.log(`🔄 [URLManager] 새로운 URL 생성: ${s3Key}`);
-    const newUrl = await secureS3Service.generateSecureDownloadUrl(s3Key, 86400); // 24시간
+    // 백엔드 API를 통한 새로운 URL 생성
+    console.log(`🔄 [URLManager] 백엔드를 통한 URL 생성: ${s3Key}`);
+    const newUrl = `${BACKEND_API_URL}/api/s3/file/${encodeURIComponent(s3Key)}`;
     
     // 캐시에 저장
     storeUrlInfo(s3Key, newUrl, 86400);

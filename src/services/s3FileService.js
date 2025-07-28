@@ -1,24 +1,50 @@
 import AWS from 'aws-sdk';
+import { getLocalCredentials } from '../utils/localCredentials';
 
-// AWS S3 설정
-AWS.config.update({
-  accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
-  region: process.env.REACT_APP_AWS_REGION
-});
+const BUCKET_NAME = process.env.REACT_APP_S3_BUCKET || 'demo-factory-storage-bucket';
 
-const s3 = new AWS.S3();
-const BUCKET_NAME = process.env.REACT_APP_S3_BUCKET || 'aws-demo-factory';
-
-console.log('☁️ [S3FileService] 설정 완료:', {
-  region: process.env.REACT_APP_AWS_REGION,
-  bucket: BUCKET_NAME
-});
+// S3 인스턴스 초기화 함수
+const initializeS3 = async () => {
+  try {
+    console.log('☁️ [S3FileService] 로컬 AWS credentials 로드 중...');
+    
+    const credentials = await getLocalCredentials();
+    
+    const s3Config = {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey
+    };
+    
+    const s3 = new AWS.S3(s3Config);
+    
+    console.log('✅ [S3FileService] AWS S3 설정 완료:', {
+      region: s3Config.region,
+      bucket: BUCKET_NAME,
+      hasCredentials: !!(credentials.accessKeyId && credentials.secretAccessKey)
+    });
+    
+    return s3;
+  } catch (error) {
+    console.error('❌ [S3FileService] AWS credentials 로드 실패:', error);
+    
+    // Fallback: 환경 변수 사용
+    const s3Config = {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2',
+      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY
+    };
+    
+    return new AWS.S3(s3Config);
+  }
+};
 
 // S3에서 파일 목록 조회
 export const getS3Files = async () => {
   try {
     console.log('☁️ [S3] 파일 목록 조회 시작...');
+    
+    const s3 = await initializeS3();
     
     const params = {
       Bucket: BUCKET_NAME,
@@ -98,6 +124,7 @@ const getFileType = (extension) => {
 // S3에서 특정 파일 URL 생성 (Presigned URL)
 export const getS3FileUrl = async (key, expiresIn = 3600) => {
   try {
+    const s3 = await initializeS3();
     console.log('🔗 [S3] Presigned URL 생성:', key);
     
     const params = {
@@ -119,6 +146,7 @@ export const getS3FileUrl = async (key, expiresIn = 3600) => {
 // S3 파일 존재 여부 확인
 export const checkS3FileExists = async (key) => {
   try {
+    const s3 = await initializeS3();
     const params = {
       Bucket: BUCKET_NAME,
       Key: key

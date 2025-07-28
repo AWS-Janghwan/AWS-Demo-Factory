@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -32,9 +32,9 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { useContent, CATEGORIES } from '../context/ContentContextAWS';
 import { useAuth } from '../context/AuthContextCognito';
-import { uploadFileToS3 } from '../utils/s3Upload';
-import { saveFileLocally } from '../utils/amplifyConfig';
-import secureS3Service from '../services/secureS3Service';
+// import { uploadFileToS3 } from '../utils/s3Upload'; // 백엔드 API 사용으로 대체
+// import { saveFileLocally } from '../utils/amplifyConfig'; // 백엔드 API 사용으로 대체
+import { uploadFileSecurely } from '../services/backendUploadService';
 
 const ContentUploadPage = () => {
   const navigate = useNavigate();
@@ -71,6 +71,9 @@ const ContentUploadPage = () => {
   });
   const [tagInput, setTagInput] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  
+  // 본문 textarea ref
+  const contentTextareaRef = useRef(null);
 
   // Object URL 정리 (메모리 누수 방지)
   useEffect(() => {
@@ -115,8 +118,8 @@ const ContentUploadPage = () => {
         // 임시 콘텐츠 ID 생성 (실제 저장 시 새로 생성됨)
         const tempContentId = `temp-${Date.now()}`;
         
-        // 보안 S3 업로드 사용
-        const uploadResult = await secureS3Service.uploadFileSecurely(
+        // 백엔드를 통한 안전한 S3 업로드
+        const uploadResult = await uploadFileSecurely(
           file, 
           tempContentId, 
           (progress) => {
@@ -129,9 +132,19 @@ const ContentUploadPage = () => {
 
         console.log(`✅ [ContentUploadPage] 보안 업로드 완료: ${file.name}`);
 
+        // 백엔드 업로드 결과 처리
+        let fileUrl;
+        if (uploadResult && typeof uploadResult === 'object' && uploadResult.s3Key) {
+          // 백엔드 스트리밍 URL 사용
+          fileUrl = `http://localhost:3001/api/s3/file/${encodeURIComponent(uploadResult.s3Key)}`;
+        } else {
+          fileUrl = uploadResult.url || uploadResult.fileUrl || uploadResult;
+        }
+
         const uploadedFile = {
           ...uploadResult,
-          id: fileId
+          id: fileId,
+          url: fileUrl
         };
 
         newUploadedFiles.push(uploadedFile);
@@ -196,16 +209,44 @@ const ContentUploadPage = () => {
     });
   };
 
-  // 본문에 미디어 삽입
+  // 커서 위치에 미디어 삽입
   const insertMediaToContent = (file) => {
     const mediaTag = file.type.startsWith('video/') 
       ? `[video:${file.name}]`
       : `[image:${file.name}]`;
     
-    setFormData(prev => ({
-      ...prev,
-      content: prev.content + '\n\n' + mediaTag + '\n\n'
-    }));
+    const textarea = contentTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentContent = formData.content;
+      
+      // 커서 위치에 미디어 태그 삽입
+      const newContent = 
+        currentContent.substring(0, start) + 
+        '\n' + mediaTag + '\n' + 
+        currentContent.substring(end);
+      
+      setFormData(prev => ({
+        ...prev,
+        content: newContent
+      }));
+      
+      // 커서 위치를 삽입된 텍스트 뒤로 이동
+      setTimeout(() => {
+        const newCursorPos = start + mediaTag.length + 2; // \n + mediaTag + \n
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+      
+      console.log(`✅ 커서 위치에 미디어 삽입 완료: ${mediaTag}`);
+    } else {
+      // fallback: textarea ref가 없으면 기존 방식 사용
+      setFormData(prev => ({
+        ...prev,
+        content: prev.content + '\n\n' + mediaTag + '\n\n'
+      }));
+    }
   };
 
   // 파일 삭제
@@ -282,15 +323,9 @@ const ContentUploadPage = () => {
     }
   };
 
-  // 파일 미리보기 URL 생성
-  const getPreviewUrl = (file) => {
+  // 파일 미리보기 URL 생성 (백엔드 API 사용)
+  const getPreviewUrl = async (file) => {
     try {
-      // 이미 S3 URL이 있는 경우 (업로드 완료된 파일)
-      if (file.url && (file.url.startsWith('https://') || file.url.startsWith('http://'))) {
-        console.log('🔗 [ContentUploadPage] S3 URL 사용:', file.name);
-        return file.url;
-      }
-      
       // File 객체인 경우 (새로 업로드한 파일)
       if (file instanceof File) {
         const objectUrl = URL.createObjectURL(file);
@@ -298,8 +333,32 @@ const ContentUploadPage = () => {
         return objectUrl;
       }
       
-      // 메타데이터 객체인 경우 (이미 업로드된 파일)
-      if (file.url) {
+      // S3 파일인 경우 백엔드를 통해 Presigned URL 생성
+      if (file.s3Key) {
+        try {
+          console.log('🔗 [ContentUploadPage] 백엔드를 통해 Presigned URL 생성:', file.s3Key);
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001'}/api/s3/presigned-url`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ s3Key: file.s3Key })
+          });
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            console.log('✅ [ContentUploadPage] Presigned URL 생성 성공:', file.name);
+            return data.url;
+          } else {
+            console.error('❌ [ContentUploadPage] Presigned URL 생성 실패:', data.error);
+          }
+        } catch (error) {
+          console.error('❌ [ContentUploadPage] Presigned URL 요청 실패:', error);
+        }
+      }
+      
+      // 이미 URL이 있는 경우
+      if (file.url && (file.url.startsWith('https://') || file.url.startsWith('http://'))) {
         console.log('🔗 [ContentUploadPage] 기존 URL 사용:', file.name);
         return file.url;
       }
@@ -594,10 +653,11 @@ const ContentUploadPage = () => {
                 label="콘텐츠 (마크다운 지원)"
                 value={formData.content}
                 onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                inputRef={contentTextareaRef}
                 multiline
                 rows={10}
-                placeholder="마크다운 문법을 사용하여 콘텐츠를 작성하세요...&#10;&#10;미디어 삽입 방법:&#10;- 이미지: [image:파일명]&#10;- 비디오: [video:파일명]&#10;- 또는 업로드된 파일의 '+' 버튼을 클릭하세요"
-                helperText="마크다운 문법을 지원합니다. 업로드한 미디어 파일은 [image:파일명] 또는 [video:파일명] 태그로 본문에 삽입할 수 있습니다."
+                placeholder="마크다운 문법을 사용하여 콘텐츠를 작성하세요...&#10;&#10;미디어 삽입 방법:&#10;- 이미지: [image:파일명]&#10;- 비디오: [video:파일명]&#10;- 또는 업로드된 파일의 '+' 버튼을 클릭하여 커서 위치에 삽입하세요"
+                helperText="마크다운 문법을 지원합니다. '+' 버튼을 클릭하면 커서 위치에 미디어 태그가 삽입됩니다."
               />
             </Paper>
           </Grid>

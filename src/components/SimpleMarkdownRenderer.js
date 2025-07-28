@@ -16,7 +16,7 @@ import {
   Button
 } from '@mui/material';
 import { Close as CloseIcon, Refresh as RefreshIcon } from '@mui/icons-material';
-import ReactPlayer from 'react-player';
+
 import { useContent } from '../context/ContentContextAWS';
 import urlManager from '../utils/urlManager';
 
@@ -263,6 +263,25 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
   const renderMediaComponent = (file, mediaType) => {
     if (mediaType === 'image') {
       console.log(`🖼️ [SimpleMarkdownRenderer] 이미지 컴포넌트 렌더링: ${file.name}, URL: ${file.url?.substring(0, 50)}...`);
+      
+      // URL이 없거나 유효하지 않은 경우 오류 메시지 표시
+      if (!file.url || file.url.trim() === '') {
+        console.error(`❌ [SimpleMarkdownRenderer] 이미지 URL이 없음: ${file.name}`);
+        return (
+          <Card sx={{ maxWidth: '100%', my: 2, p: 2, textAlign: 'center', backgroundColor: '#fff3cd' }}>
+            <Typography variant="body2" color="warning.main">
+              ⚠️ 이미지 파일을 불러올 수 없습니다
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              파일명: {file.name}
+            </Typography>
+            <Typography variant="caption" display="block" color="text.secondary">
+              브라우저를 재시작한 후 파일이 사라졌을 수 있습니다. 콘텐츠를 수정하여 파일을 다시 업로드해주세요.
+            </Typography>
+          </Card>
+        );
+      }
+      
       return (
         <Box sx={{ my: 2, maxWidth: '100%' }}>
           <img
@@ -292,20 +311,33 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
       return (
         <Card sx={{ maxWidth: '100%', my: 2 }}>
           <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 aspect ratio */ }}>
-            <ReactPlayer
-              url={file.url}
+            <video
+              src={file.url}
               width="100%"
               height="100%"
-              style={{ position: 'absolute', top: 0, left: 0 }}
+              style={{ position: 'absolute', top: 0, left: 0, backgroundColor: '#000' }}
               controls
-              config={{
-                file: {
-                  attributes: {
-                    controlsList: 'nodownload'
-                  }
-                }
+              preload="metadata"
+              controlsList="nodownload"
+              onError={(e) => {
+                console.error('❌ [SimpleMarkdownRenderer] 비디오 로드 실패:', file.name, e);
+                console.error('❌ [SimpleMarkdownRenderer] 비디오 URL:', file.url);
+                handleMediaError(file, e);
               }}
-            />
+              onLoadStart={() => {
+                console.log('🎬 [SimpleMarkdownRenderer] 비디오 로드 시작:', file.name);
+              }}
+              onLoadedMetadata={() => {
+                console.log('✅ [SimpleMarkdownRenderer] 비디오 메타데이터 로드 완료:', file.name);
+              }}
+            >
+              브라우저가 비디오를 지원하지 않습니다.
+            </video>
+          </Box>
+          <Box sx={{ p: 1, textAlign: 'center' }}>
+            <Typography variant="caption" color="text.secondary">
+              📹 {file.name}
+            </Typography>
           </Box>
         </Card>
       );
