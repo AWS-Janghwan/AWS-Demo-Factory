@@ -93,9 +93,7 @@ const proxyToBackend = (req, res) => {
 };
 
 
-  
-  // 이 부분은 proxyToPort 함수로 대체됨
-};
+  // 이 부분은 proxyToPort 함수로 대체됨 - 빈 함수 제거
 
 const server = http.createServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url} (Origin: ${req.headers.origin || 'none'})`);
