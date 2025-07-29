@@ -23,12 +23,16 @@ const mimeTypes = {
 
 // API 프록시 함수
 const proxyToBackend = (req, res) => {
+  console.log(`🔄 [Proxy] API 요청 프록시: ${req.method} ${req.url}`);
+  
   // OPTIONS 요청 직접 처리
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    console.log(`✅ [Proxy] OPTIONS 요청 처리: ${req.headers.origin}`);
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
     res.writeHead(200);
     res.end();
     return;
@@ -44,27 +48,29 @@ const proxyToBackend = (req, res) => {
   };
   
   const proxyReq = http.request(options, (proxyRes) => {
-    // CORS 헤더 추가
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    console.log(`✅ [Proxy] 백엔드 응답: ${proxyRes.statusCode} ${req.url}`);
     
-    // OPTIONS 요청 처리
-    if (req.method === 'OPTIONS') {
-      res.writeHead(200);
-      res.end();
-      return;
-    }
+    // CORS 헤더 추가 (백엔드 응답 헤더와 병합)
+    const responseHeaders = { ...proxyRes.headers };
+    responseHeaders['Access-Control-Allow-Origin'] = req.headers.origin || '*';
+    responseHeaders['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+    responseHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name';
+    responseHeaders['Access-Control-Allow-Credentials'] = 'true';
     
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    res.writeHead(proxyRes.statusCode, responseHeaders);
     proxyRes.pipe(res);
   });
   
   proxyReq.on('error', (err) => {
-    console.error('❌ API 프록시 오류:', err);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Backend API unavailable' }));
+    console.error(`❌ [Proxy] 백엔드 API 오류 (${req.url}):`, err.message);
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Content-Type', 'application/json');
+    res.writeHead(500);
+    res.end(JSON.stringify({ 
+      error: 'Backend API unavailable', 
+      details: err.message,
+      url: req.url 
+    }));
   });
   
   if (req.method !== 'GET' && req.method !== 'HEAD') {

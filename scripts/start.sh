@@ -56,6 +56,13 @@ echo "🔗 배포 환경 동기화 상태 확인..."
 echo "📡 백엔드 API 헬스체크:"
 curl -s --max-time 10 http://localhost:3001/health 2>/dev/null | head -5 || echo "❌ 백엔드 API 응답 없음"
 
+echo "📡 백엔드 API CORS 테스트:"
+curl -X OPTIONS http://localhost:3001/api/health \
+  -H "Origin: https://demofactory.cloud" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type" \
+  -v 2>&1 | grep -E "(Access-Control|HTTP)" || echo "❌ CORS 테스트 실패"
+
 echo "📡 Bedrock API 헬스체크:"
 curl -s --max-time 10 http://localhost:5001/api/bedrock/test 2>/dev/null | head -5 || echo "❌ Bedrock API 응답 없음"
 
