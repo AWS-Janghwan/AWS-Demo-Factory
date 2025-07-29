@@ -1,5 +1,16 @@
 // 백엔드 API를 통한 S3 서비스
-const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
+// 현재 도메인 기반 동적 API URL 생성
+const getCurrentDomainApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}`;
+  }
+  return process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
+};
+
+const BACKEND_API_URL = getCurrentDomainApiUrl();
+console.log('🔗 [BackendS3] 동적 API URL:', BACKEND_API_URL);
 
 // 백엔드를 통해 S3 파일 목록 가져오기
 export const getS3Files = async () => {

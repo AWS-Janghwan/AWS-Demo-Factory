@@ -1,7 +1,18 @@
 // URL 만료 관리 유틸리티
 // import secureS3Service from '../services/secureS3Service'; // 백엔드 API 사용으로 대체
 
-const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
+// 현재 도메인 기반 동적 API URL 생성
+const getCurrentDomainApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}`;
+  }
+  return process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
+};
+
+const BACKEND_API_URL = getCurrentDomainApiUrl();
+console.log('🔗 [URLManager] 동적 API URL:', BACKEND_API_URL);
 
 // URL 메타데이터 저장소 (메모리 캐시)
 const urlCache = new Map();

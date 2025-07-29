@@ -337,7 +337,10 @@ const ContentUploadPage = () => {
       if (file.s3Key) {
         try {
           console.log('🔗 [ContentUploadPage] 백엔드를 통해 Presigned URL 생성:', file.s3Key);
-          const response = await fetch(`${process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001'}/api/s3/presigned-url`, {
+          // 현재 도메인 기반 동적 API URL
+          const apiUrl = `${window.location.protocol}//${window.location.hostname}`;
+          console.log('🔗 [ContentUpload] 동적 API URL:', apiUrl);
+          const response = await fetch(`${apiUrl}/api/s3/presigned-url`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
