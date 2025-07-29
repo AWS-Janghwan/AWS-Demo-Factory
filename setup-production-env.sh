@@ -17,9 +17,9 @@ NODE_ENV=production
 
 # API 서버 URL (프로덕션)
 REACT_APP_API_BASE_URL=https://www.demofactory.cloud
-REACT_APP_BACKEND_API_URL=https://www.demofactory.cloud:3001
-REACT_APP_PDF_SERVER_URL=https://www.demofactory.cloud:5002
-REACT_APP_BEDROCK_SERVER_URL=https://www.demofactory.cloud:5001
+REACT_APP_BACKEND_API_URL=https://www.demofactory.cloud
+REACT_APP_PDF_SERVER_URL=https://www.demofactory.cloud
+REACT_APP_BEDROCK_SERVER_URL=https://www.demofactory.cloud
 
 # AWS 설정
 REACT_APP_COGNITO_REGION=us-west-2

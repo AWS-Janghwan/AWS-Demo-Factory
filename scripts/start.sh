@@ -14,15 +14,43 @@ if [ ! -f "build/index.html" ]; then
     npm run build
 fi
 
+# 통합 서버 관리자 실행 권한 확인 및 설정
+chmod +x unified-server-manager.sh
+
 # 통합 서버 관리자를 통한 서버 시작
 echo "🚀 통합 서버 관리자로 모든 서버 시작 중..."
-if ./unified-server-manager.sh start > server-start.log 2>&1; then
+echo "📍 실행 파일 확인: $(ls -la unified-server-manager.sh)"
+
+if bash ./unified-server-manager.sh start > server-start.log 2>&1; then
     echo "✅ 모든 서버 시작 완료"
+    echo "📄 서버 시작 로그:"
+    tail -20 server-start.log
 else
     echo "⚠️ 서버 시작 중 오류 발생"
     echo "📄 로그 파일 확인: server-start.log"
+    echo "🔍 오류 내용:"
+    tail -20 server-start.log
     echo "🔄 대체 방법으로 서버 시작 시도..."
-    ./fix-static-server.sh >> server-start.log 2>&1
+    
+    # 각 서버를 개별적으로 시작
+    echo "📱 정적 서버 시작 (3000 포트)..."
+    nohup node simple-static-server.js > logs/static.log 2>&1 &
+    echo $! > pids/static.pid
+    
+    echo "🔌 백엔드 API 서버 시작 (3001 포트)..."
+    nohup node backend-api-server.js > logs/backend.log 2>&1 &
+    echo $! > pids/backend.pid
+    
+    echo "🤖 Bedrock API 서버 시작 (5001 포트)..."
+    nohup node server/bedrock-api.js > logs/bedrock.log 2>&1 &
+    echo $! > pids/bedrock.pid
+    
+    echo "📄 Python PDF 서버 시작 (5002 포트)..."
+    cd python-pdf-server && nohup python app.py > ../logs/pdf.log 2>&1 &
+    echo $! > ../pids/pdf.pid
+    cd ..
+    
+    echo "✅ 대체 서버 시작 완료"
 fi
 
 # 짧은 대기 후 상태 확인
