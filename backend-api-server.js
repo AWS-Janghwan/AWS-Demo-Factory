@@ -216,14 +216,7 @@ const cognitoIdp = new AWS.CognitoIdentityServiceProvider({
   region: process.env.REACT_APP_COGNITO_REGION || 'us-west-2'
 });
 
-// 헬스 체크
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    service: 'AWS Demo Factory Backend API'
-  });
-});
+// 헬스 체크 중복 제거 (위에 이미 정의됨)
 
 // Cognito 사용자 목록 조회 API
 app.get('/api/cognito/users', async (req, res) => {
