@@ -1,17 +1,24 @@
 // 백엔드 API를 통한 분석 데이터 저장 서비스
 
-// 강제로 현재 도메인 사용 (환경 변수 무시)
-const BACKEND_API_URL = (() => {
+// 긴급 해결: 강제로 www 없는 도메인 사용
+const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
+    let hostname = window.location.hostname;
+    
+    // 강제로 www 제거
+    if (hostname.startsWith('www.')) {
+      hostname = hostname.substring(4);
+    }
+    
     const url = `${protocol}//${hostname}`;
-    console.log('🔥 [Analytics] 강제 동적 URL 사용:', url);
+    console.log('🚑🚑 [Analytics] 긴급 해결 - www 제거:', url);
     return url;
   }
-  console.log('🔥 [Analytics] 서버 사이드 - localhost 사용');
   return 'http://localhost:3001';
-})();
+};
+
+const BACKEND_API_URL = getBackendUrl();
 console.log('🔗 [Analytics] 동적 API URL:', BACKEND_API_URL);
 
 class AnalyticsService {
@@ -28,7 +35,9 @@ class AnalyticsService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(`${BACKEND_API_URL}/api/analytics/track`, {
+      const apiUrl = getBackendUrl();
+      console.log('🚑🚑 [Analytics] API 호출 URL:', `${apiUrl}/api/analytics/track`);
+      const response = await fetch(`${apiUrl}/api/analytics/track`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +128,8 @@ class AnalyticsService {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       
-      const response = await fetch(`${BACKEND_API_URL}/api/analytics/data?${params}`);
+      const apiUrl = getBackendUrl();
+      const response = await fetch(`${apiUrl}/api/analytics/data?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -148,7 +158,8 @@ class AnalyticsService {
   // 백엔드 서버 상태 확인
   async checkBackendStatus() {
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/health`);
+      const apiUrl = getBackendUrl();
+      const response = await fetch(`${apiUrl}/api/health`);
       return response.ok;
     } catch (error) {
       console.warn('⚠️ [AnalyticsService] 백엔드 서버 연결 실패:', error);

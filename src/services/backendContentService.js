@@ -1,14 +1,14 @@
 // 백엔드 API를 통한 안전한 콘텐츠 관리 서비스
 // DynamoDB 작업을 백엔드 서버를 통해 안전하게 처리
 
-// 최종 해결: 동적 URL 함수로 매번 호출 시 결정
+// 테스트용: 직접 EC2 IP 사용
 const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const url = `${protocol}//${hostname}`;
-    console.log('🔥🔥 [BackendContent] 매번 동적 URL 결정:', url);
-    console.log('🔥🔥 [BackendContent] 현재 도메인:', hostname);
+    // CloudFront 우회하여 직접 EC2 IP 사용
+    const testIp = '3.168.178.90'; // 대표 IP 사용
+    const url = `http://${testIp}:3001`;
+    console.log('🚨🚨 [BackendContent] 테스트용 직접 IP 사용:', url);
+    console.log('🚨🚨 [BackendContent] CloudFront 우회 모드');
     return url;
   }
   return 'http://localhost:3001';
