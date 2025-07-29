@@ -1,16 +1,17 @@
 // 백엔드 API를 통한 분석 데이터 저장 서비스
 
-// 현재 도메인 기반 동적 API URL 생성
-const getCurrentDomainApiUrl = () => {
+// 강제로 현재 도메인 사용 (환경 변수 무시)
+const BACKEND_API_URL = (() => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    return `${protocol}//${hostname}`;
+    const url = `${protocol}//${hostname}`;
+    console.log('🔥 [Analytics] 강제 동적 URL 사용:', url);
+    return url;
   }
-  return process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
-};
-
-const BACKEND_API_URL = getCurrentDomainApiUrl();
+  console.log('🔥 [Analytics] 서버 사이드 - localhost 사용');
+  return 'http://localhost:3001';
+})();
 console.log('🔗 [Analytics] 동적 API URL:', BACKEND_API_URL);
 
 class AnalyticsService {
