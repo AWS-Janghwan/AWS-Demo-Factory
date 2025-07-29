@@ -1,18 +1,21 @@
 // 백엔드 API를 통한 안전한 파일 업로드 서비스
 // 브라우저에서 직접 AWS 자격 증명을 사용하지 않고 백엔드 서버를 통해 업로드
 
-// 강제로 현재 도메인 사용 (환경 변수 무시)
-const BACKEND_API_URL = (() => {
+// 최종 해결: 동적 URL 함수로 매번 호출 시 결정
+const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const url = `${protocol}//${hostname}`;
-    console.log('🔥 [BackendUpload] 강제 동적 URL 사용:', url);
+    console.log('🔥🔥 [BackendUpload] 매번 동적 URL 결정:', url);
+    console.log('🔥🔥 [BackendUpload] 현재 도메인:', hostname);
     return url;
   }
-  console.log('🔥 [BackendUpload] 서버 사이드 - localhost 사용');
   return 'http://localhost:3001';
-})();
+};
+
+// 레거시 지원용
+const BACKEND_API_URL = getBackendUrl();
 console.log('🔗 [BackendUpload] 동적 API URL:', BACKEND_API_URL);
 console.log('🌐 [BackendUpload] 현재 도메인:', window.location.hostname);
 console.log('🔄 [BackendUpload] 코드 업데이트 확인 - v2.0');
@@ -83,7 +86,10 @@ class BackendUploadService {
                 });
                 
                 // 요청 전송
-                xhr.open('POST', `${BACKEND_API_URL}/api/upload/secure`);
+                const apiUrl = getBackendUrl();
+                const uploadUrl = `${apiUrl}/api/upload/secure`;
+                console.log('🔥🔥 [BackendUpload] 업로드 URL:', uploadUrl);
+                xhr.open('POST', uploadUrl);
                 xhr.send(formData);
             });
             

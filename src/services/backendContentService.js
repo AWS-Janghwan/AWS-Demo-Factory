@@ -1,18 +1,21 @@
 // 백엔드 API를 통한 안전한 콘텐츠 관리 서비스
 // DynamoDB 작업을 백엔드 서버를 통해 안전하게 처리
 
-// 강제로 현재 도메인 사용 (환경 변수 무시)
-const BACKEND_API_URL = (() => {
+// 최종 해결: 동적 URL 함수로 매번 호출 시 결정
+const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const url = `${protocol}//${hostname}`;
-    console.log('🔥 [BackendContent] 강제 동적 URL 사용:', url);
+    console.log('🔥🔥 [BackendContent] 매번 동적 URL 결정:', url);
+    console.log('🔥🔥 [BackendContent] 현재 도메인:', hostname);
     return url;
   }
-  console.log('🔥 [BackendContent] 서버 사이드 - localhost 사용');
   return 'http://localhost:3001';
-})();
+};
+
+// 레거시 지원용
+const BACKEND_API_URL = getBackendUrl();
 console.log('🔗 [BackendContent] 동적 API URL:', BACKEND_API_URL);
 console.log('🌐 [BackendContent] 현재 도메인:', window.location.hostname);
 console.log('🔄 [BackendContent] 코드 업데이트 확인 - v2.0');
@@ -55,7 +58,9 @@ class BackendContentService {
         try {
             console.log('📋 [BackendContent] 백엔드를 통한 콘텐츠 목록 조회 시작');
             
-            const response = await fetch(`${BACKEND_API_URL}/api/content/list`);
+            const apiUrl = getBackendUrl();
+            console.log('🔥🔥 [BackendContent] API 호출 URL:', `${apiUrl}/api/content/list`);
+            const response = await fetch(`${apiUrl}/api/content/list`);
             const data = await response.json();
             
             if (response.ok && data.success) {
