@@ -138,6 +138,8 @@ const theme = createTheme({
 
 function App() {
   console.log('🚀 [App] 전체 기능 버전 렌더링 시작');
+console.log('🔥🔥🔥 [App] 코드 버전 확인: v3.0 - 직접 IP 테스트');
+console.log('🔥🔥🔥 [App] 이 로그가 보이지 않으면 캐시 문제입니다!');
   
   return (
     <ThemeProvider theme={theme}>
