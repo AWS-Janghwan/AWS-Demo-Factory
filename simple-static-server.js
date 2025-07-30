@@ -109,15 +109,19 @@ const server = http.createServer((req, res) => {
   
   // API 프록시 처리
   if (pathname.startsWith('/api/')) {
+    console.log(`🔍 [DEBUG] API 요청 감지: ${pathname}`);
     // Bedrock API 프록시 (5001 포트)
     if (pathname.startsWith('/api/bedrock/')) {
+      console.log(`🔍 [DEBUG] Bedrock 프록시로 전달`);
       return proxyToPort(req, res, 5001);
     }
     // PDF API 프록시 (5002 포트)
-    if (pathname.startsWith('/api/pdf/') || pathname === '/health') {
+    if (pathname.startsWith('/api/pdf/')) {
+      console.log(`🔍 [DEBUG] PDF 프록시로 전달`);
       return proxyToPort(req, res, 5002);
     }
     // 기본 백엔드 API 프록시 (3001 포트)
+    console.log(`🔍 [DEBUG] 백엔드 프록시로 전달`);
     return proxyToBackend(req, res);
   }
   
