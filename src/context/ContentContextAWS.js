@@ -64,10 +64,12 @@ export const ContentProvider = ({ children }) => {
                     try {
                       const encodedS3Key = encodeURIComponent(file.s3Key);
                       // 환경별 백엔드 URL 생성
-                      const backendBaseUrl = process.env.REACT_APP_BACKEND_API_URL || 
+                      // 동적 URL 생성 (빈 문자열 방지)
+                      const backendBaseUrl = (process.env.REACT_APP_BACKEND_API_URL && process.env.REACT_APP_BACKEND_API_URL.trim()) || 
                                             (window.location.protocol === 'https:' ? 
                                              `https://${window.location.hostname}` : 
                                              'http://localhost:3001');
+                      console.log('🔗 [ContentContext] 백엔드 URL:', backendBaseUrl);
                       const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
                       console.log('🔒 [ContentContext] 백엔드 스트리밍 URL 생성:', file.name, streamingUrl);
                       return {
