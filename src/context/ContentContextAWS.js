@@ -69,9 +69,11 @@ export const ContentProvider = ({ children }) => {
                       let backendBaseUrl;
                       const envUrl = process.env.REACT_APP_BACKEND_API_URL;
                       
-                      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '') {
+                      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '' && envUrl !== 'https://' && envUrl !== 'http://') {
                         backendBaseUrl = envUrl.trim();
+                        console.log('✅ [ContentContext] 환경 변수 사용:', backendBaseUrl);
                       } else {
+                        console.log('⚠️ [ContentContext] 환경 변수 무효:', envUrl);
                         // 현재 도메인 기반 동적 생성 (포트 포함)
                         if (typeof window !== 'undefined') {
                           const protocol = window.location.protocol;
@@ -428,9 +430,11 @@ export const ContentProvider = ({ children }) => {
       let backendBaseUrl;
       const envUrl = process.env.REACT_APP_BACKEND_API_URL;
       
-      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '') {
+      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '' && envUrl !== 'https://' && envUrl !== 'http://') {
         backendBaseUrl = envUrl.trim();
+        console.log('✅ [ContentContext] 환경 변수 사용 (함수):', backendBaseUrl);
       } else {
+        console.log('⚠️ [ContentContext] 환경 변수 무효 (함수):', envUrl);
         // 현재 도메인 기반 동적 생성 (포트 포함)
         if (typeof window !== 'undefined') {
           const protocol = window.location.protocol;

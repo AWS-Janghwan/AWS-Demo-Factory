@@ -12,10 +12,10 @@ echo "🌍 환경 변수 설정 중..."
 CURRENT_DOMAIN=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "www.demofactory.cloud")
 echo "🌐 감지된 도메인: $CURRENT_DOMAIN"
 
-# 도메인에 따른 API URL 설정
+# 도메인에 따른 API URL 설정 (www 없이 통일)
 if [[ "$CURRENT_DOMAIN" == *"demofactory.cloud"* ]]; then
-    API_BASE_URL="https://www.demofactory.cloud"
-    BACKEND_API_URL="https://www.demofactory.cloud"
+    API_BASE_URL="https://demofactory.cloud"
+    BACKEND_API_URL="https://demofactory.cloud"
 else
     API_BASE_URL="https://$CURRENT_DOMAIN"
     BACKEND_API_URL="https://$CURRENT_DOMAIN"
