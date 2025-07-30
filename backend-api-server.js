@@ -144,6 +144,21 @@ app.options('*', (req, res) => {
 });
 
 // 헬스체크 엔드포인트
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'AWS Demo Factory Backend API',
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      AWS_REGION: process.env.AWS_REGION || 'ap-northeast-2',
+      S3_BUCKET: process.env.S3_BUCKET || 'aws-demo-factory',
+      DYNAMODB_TABLE: process.env.DYNAMODB_TABLE || 'DemoFactoryContents'
+    }
+  });
+});
+
+// 기존 호환성을 위한 /health 엔드포인트
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
