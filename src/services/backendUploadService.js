@@ -5,8 +5,8 @@
 const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const url = `${protocol}//${hostname}`;
+    const host = window.location.host; // hostname + port 포함
+    const url = `${protocol}//${host}`;
     console.log('🔥🔥🔥 [BackendUpload] Mixed Content 해결:', url);
     console.log('🔥🔥🔥 [BackendUpload] 프록시 사용 모드');
     return url;

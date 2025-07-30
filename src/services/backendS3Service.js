@@ -3,8 +3,8 @@
 const BACKEND_API_URL = (() => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const url = `${protocol}//${hostname}`;
+    const host = window.location.host; // hostname + port 포함
+    const url = `${protocol}//${host}`;
     console.log('🔥 [BackendS3] 강제 동적 URL 사용:', url);
     return url;
   }

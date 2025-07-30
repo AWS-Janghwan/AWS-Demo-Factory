@@ -4,14 +4,14 @@
 const getBackendUrl = () => {
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol;
-    let hostname = window.location.hostname;
+    let host = window.location.host; // hostname + port 포함
     
-    // 강제로 www 제거
-    if (hostname.startsWith('www.')) {
-      hostname = hostname.substring(4);
+    // 강제로 www 제거 (로컬에서는 적용 안됨)
+    if (host.startsWith('www.') && !host.includes('localhost')) {
+      host = host.substring(4);
     }
     
-    const url = `${protocol}//${hostname}`;
+    const url = `${protocol}//${host}`;
     console.log('🚑🚑 [Analytics] 긴급 해결 - www 제거:', url);
     return url;
   }

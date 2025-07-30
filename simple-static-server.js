@@ -22,8 +22,17 @@ const mimeTypes = {
 };
 
 // 범용 프록시 함수
-const proxyToPort = (req, res, targetPort) => {
-  console.log(`🔄 [Proxy] API 요청 프록시: ${req.method} ${req.url} -> :${targetPort}`);
+const proxyToPort = (req, res, targetPort, pathPrefix = null) => {
+  // 경로 변환: /api/prefix를 제거하여 백엔드 서버로 전달
+  let targetPath = req.url;
+  if (pathPrefix) {
+    targetPath = req.url.replace(pathPrefix, '');
+    if (!targetPath.startsWith('/')) {
+      targetPath = '/' + targetPath;
+    }
+  }
+  
+  console.log(`🔄 [Proxy] API 요청 프록시: ${req.method} ${req.url} -> :${targetPort}${targetPath}`);
   
   // OPTIONS 요청 직접 처리
   if (req.method === 'OPTIONS') {
@@ -41,7 +50,7 @@ const proxyToPort = (req, res, targetPort) => {
   const options = {
     hostname: 'localhost',
     port: targetPort,
-    path: req.url,
+    path: targetPath,
     method: req.method,
     headers: req.headers
   };
@@ -110,7 +119,7 @@ const server = http.createServer((req, res) => {
   // API 프록시 처리
   if (pathname.startsWith('/api/')) {
     console.log(`🔍 [DEBUG] API 요청 감지: ${pathname}`);
-    // Bedrock API 프록시 (5001 포트)
+    // Bedrock API 프록시 (5001 포트) - 경로 변환 없이 그대로 전달
     if (pathname.startsWith('/api/bedrock/')) {
       console.log(`🔍 [DEBUG] Bedrock 프록시로 전달`);
       return proxyToPort(req, res, 5001);
@@ -118,7 +127,7 @@ const server = http.createServer((req, res) => {
     // PDF API 프록시 (5002 포트)
     if (pathname.startsWith('/api/pdf/')) {
       console.log(`🔍 [DEBUG] PDF 프록시로 전달`);
-      return proxyToPort(req, res, 5002);
+      return proxyToPort(req, res, 5002, '/api/pdf');
     }
     // 기본 백엔드 API 프록시 (3001 포트)
     console.log(`🔍 [DEBUG] 백엔드 프록시로 전달`);
