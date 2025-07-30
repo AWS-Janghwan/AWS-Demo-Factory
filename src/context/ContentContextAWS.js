@@ -65,10 +65,22 @@ export const ContentProvider = ({ children }) => {
                       const encodedS3Key = encodeURIComponent(file.s3Key);
                       // 환경별 백엔드 URL 생성
                       // 동적 URL 생성 (빈 문자열 방지)
-                      const backendBaseUrl = (process.env.REACT_APP_BACKEND_API_URL && process.env.REACT_APP_BACKEND_API_URL.trim()) || 
-                                            (window.location.protocol === 'https:' ? 
-                                             `https://${window.location.hostname}` : 
-                                             'http://localhost:3001');
+                      // 안전한 백엔드 URL 생성
+                      let backendBaseUrl;
+                      const envUrl = process.env.REACT_APP_BACKEND_API_URL;
+                      
+                      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '') {
+                        backendBaseUrl = envUrl.trim();
+                      } else {
+                        // 현재 도메인 기반 동적 생성 (포트 포함)
+                        if (typeof window !== 'undefined') {
+                          const protocol = window.location.protocol;
+                          const host = window.location.host; // hostname + port 포함
+                          backendBaseUrl = `${protocol}//${host}`;
+                        } else {
+                          backendBaseUrl = 'http://localhost:3001';
+                        }
+                      }
                       console.log('🔗 [ContentContext] 백엔드 URL:', backendBaseUrl);
                       const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
                       console.log('🔒 [ContentContext] 백엔드 스트리밍 URL 생성:', file.name, streamingUrl);
@@ -412,10 +424,22 @@ export const ContentProvider = ({ children }) => {
 
       // 백엔드 스트리밍 URL 생성 (환경별 동적 URL)
       const encodedS3Key = encodeURIComponent(file.s3Key);
-      const backendBaseUrl = process.env.REACT_APP_BACKEND_API_URL || 
-                            (window.location.protocol === 'https:' ? 
-                             `https://${window.location.hostname}` : 
-                             'http://localhost:3001');
+      // 안전한 백엔드 URL 생성
+      let backendBaseUrl;
+      const envUrl = process.env.REACT_APP_BACKEND_API_URL;
+      
+      if (envUrl && envUrl.trim() && envUrl !== 'undefined' && envUrl !== 'null' && envUrl !== '') {
+        backendBaseUrl = envUrl.trim();
+      } else {
+        // 현재 도메인 기반 동적 생성 (포트 포함)
+        if (typeof window !== 'undefined') {
+          const protocol = window.location.protocol;
+          const host = window.location.host; // hostname + port 포함
+          backendBaseUrl = `${protocol}//${host}`;
+        } else {
+          backendBaseUrl = 'http://localhost:3001';
+        }
+      }
       const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
       
       console.log('🔗 [ContentContext] 백엔드 스트리밍 URL 생성 완료:', file.name);
