@@ -1,15 +1,17 @@
 // 백엔드 API를 통한 안전한 콘텐츠 관리 서비스
 // DynamoDB 작업을 백엔드 서버를 통해 안전하게 처리
 
-// 최종 테스트: 무조건 직접 IP 사용
+// Mixed Content 해결: 현재 도메인 사용 (프록시 통해)
 const getBackendUrl = () => {
-  // 무조건 직접 IP 사용 (브라우저 체크 없이)
-  const testIp = '3.168.178.90';
-  const url = `http://${testIp}:3001`;
-  console.log('🔥🔥🔥 [BackendContent] 무조건 직접 IP:', url);
-  console.log('🔥🔥🔥 [BackendContent] 코드 버전: v3.0');
-  console.log('🔥🔥🔥 [BackendContent] CloudFront 완전 우회');
-  return url;
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const url = `${protocol}//${hostname}`;
+    console.log('🔥🔥🔥 [BackendContent] Mixed Content 해결:', url);
+    console.log('🔥🔥🔥 [BackendContent] 프록시 사용 모드');
+    return url;
+  }
+  return 'http://localhost:3001';
 };
 
 // 레거시 지원용
