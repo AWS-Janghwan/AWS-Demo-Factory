@@ -118,8 +118,9 @@ const ContentUploadPage = () => {
         // 임시 콘텐츠 ID 생성 (실제 저장 시 새로 생성됨)
         const tempContentId = `temp-${Date.now()}`;
         
-        // 백엔드를 통한 안전한 S3 업로드
-        const uploadResult = await uploadFileSecurely(
+        // Fallback 업로드 시스템 사용
+        const { uploadFileWithFallback } = await import('../services/uploadFallback');
+        const uploadResult = await uploadFileWithFallback(
           file, 
           tempContentId, 
           (progress) => {
