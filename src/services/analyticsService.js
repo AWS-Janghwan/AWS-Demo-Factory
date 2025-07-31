@@ -2,17 +2,11 @@
 
 // 긴급 해결: 강제로 www 없는 도메인 사용
 const getBackendUrl = () => {
+  // 배포 환경에서 프록시 사용을 위해 상대 경로 사용
   if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol;
-    let host = window.location.host; // hostname + port 포함
-    
-    // 강제로 www 제거 (로컬에서는 적용 안됨)
-    if (host.startsWith('www.') && !host.includes('localhost')) {
-      host = host.substring(4);
-    }
-    
-    const url = `${protocol}//${host}`;
-    console.log('🚑🚑 [Analytics] 긴급 해결 - www 제거:', url);
+    // 현재 도메인에서 프록시를 통해 API 호출
+    const url = window.location.origin; // protocol + host 포함
+    console.log('🚑🚑 [Analytics] 프록시 사용 모드:', url);
     return url;
   }
   return 'http://localhost:3001';

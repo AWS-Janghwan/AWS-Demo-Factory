@@ -1,11 +1,11 @@
 // 백엔드 API를 통한 S3 서비스
 // 강제로 현재 도메인 사용 (환경 변수 무시)
 const BACKEND_API_URL = (() => {
+  // 배포 환경에서 프록시 사용을 위해 상대 경로 사용
   if (typeof window !== 'undefined') {
-    const protocol = window.location.protocol;
-    const host = window.location.host; // hostname + port 포함
-    const url = `${protocol}//${host}`;
-    console.log('🔥 [BackendS3] 강제 동적 URL 사용:', url);
+    // 현재 도메인에서 프록시를 통해 API 호출
+    const url = window.location.origin; // protocol + host 포함
+    console.log('🔥 [BackendS3] 프록시 사용 모드:', url);
     return url;
   }
   console.log('🔥 [BackendS3] 서버 사이드 - localhost 사용');
