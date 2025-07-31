@@ -1133,3 +1133,99 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+// 대체 업로드 엔드포인트 (CloudFront 차단 우회용)
+app.post('/api/files/upload', upload.single('file'), async (req, res) => {
+  console.log('🔄 [백엔드] 대체 업로드 엔드포인트 사용: /api/files/upload');
+  
+  try {
+    console.log('🔒 [백엔드] 안전한 파일 업로드 시작');
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: '업로드할 파일이 없습니다'
+      });
+    }
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // S3 인스턴스 생성
+    const s3 = new AWS.S3({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
+    // 안전한 파일명 생성
+    const timestamp = Date.now();
+    const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileExtension = path.extname(safeFileName);
+    const baseName = path.basename(safeFileName, fileExtension);
+    
+    // 날짜 기반 경로 생성
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    // 파일 타입에 따른 경로 분류
+    let folder = 'documents';
+    if (req.file.mimetype.startsWith('image/')) {
+      folder = 'images';
+    } else if (req.file.mimetype.startsWith('video/')) {
+      folder = 'videos';
+    } else if (req.file.mimetype.startsWith('audio/')) {
+      folder = 'audio';
+    }
+    
+    const s3Key = `contents/${folder}/${year}/${month}/${day}/${timestamp}-${baseName}${fileExtension}`;
+    
+    // S3에 파일 업로드
+    const uploadParams = {
+      Bucket: process.env.REACT_APP_S3_BUCKET || 'demo-factory-storage-bucket',
+      Key: s3Key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      Metadata: {
+        'original-name': req.file.originalname,
+        'upload-timestamp': new Date().toISOString(),
+        'content-id': req.body.contentId || 'unknown'
+      }
+    };
+    
+    console.log(`📁 [백엔드] S3 업로드 시작: ${s3Key}`);
+    const uploadResult = await s3.upload(uploadParams).promise();
+    
+    // 업로드 성공 응답
+    const fileInfo = {
+      id: `file-${timestamp}`,
+      name: req.file.originalname,
+      safeName: `${baseName}${fileExtension}`,
+      size: req.file.size,
+      type: req.file.mimetype,
+      s3Key: s3Key,
+      s3Bucket: uploadParams.Bucket,
+      url: uploadResult.Location,
+      isSecure: true,
+      uploadedAt: new Date().toISOString(),
+      contentId: req.body.contentId || null
+    };
+    
+    console.log('✅ [백엔드] 파일 업로드 성공:', fileInfo.name);
+    
+    res.json({
+      success: true,
+      file: fileInfo
+    });
+    
+  } catch (error) {
+    console.error('❌ [백엔드] 파일 업로드 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});

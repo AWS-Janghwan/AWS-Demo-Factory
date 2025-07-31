@@ -116,9 +116,17 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url);
   let pathname = parsedUrl.pathname;
   
-  // API 프록시 처리
-  if (pathname.startsWith('/api/')) {
+  // API 프록시 처리 (대체 경로 포함)
+  if (pathname.startsWith('/api/') || pathname.startsWith('/proxy-api/')) {
     console.log(`🔍 [DEBUG] API 요청 감지: ${pathname}`);
+    
+    // 대체 경로 처리
+    if (pathname.startsWith('/proxy-api/')) {
+      pathname = pathname.replace('/proxy-api/', '/api/');
+      console.log(`🔄 [DEBUG] 대체 경로 변환: ${req.url} -> ${pathname}`);
+      req.url = pathname + (parsedUrl.search || '');
+    }
+    
     // Bedrock API 프록시 (5001 포트) - 경로 변환 없이 그대로 전달
     if (pathname.startsWith('/api/bedrock/')) {
       console.log(`🔍 [DEBUG] Bedrock 프록시로 전달`);
