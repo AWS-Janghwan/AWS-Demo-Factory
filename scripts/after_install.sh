@@ -9,7 +9,7 @@ cd /data/AWS-Demo-Factory
 # 1. 환경 변수 설정
 echo "🌍 환경 변수 설정 중..."
 # 현재 도메인 자동 감지
-CURRENT_DOMAIN=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "www.demofactory.cloud")
+CURRENT_DOMAIN=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "demofactory.cloud")
 echo "🌐 감지된 도메인: $CURRENT_DOMAIN"
 
 # 도메인에 따른 API URL 설정 (www 없이 통일)
@@ -17,8 +17,8 @@ if [[ "$CURRENT_DOMAIN" == *"demofactory.cloud"* ]]; then
     API_BASE_URL="https://demofactory.cloud"
     BACKEND_API_URL="https://demofactory.cloud"
 else
-    API_BASE_URL="https://$CURRENT_DOMAIN"
-    BACKEND_API_URL="https://$CURRENT_DOMAIN"
+    API_BASE_URL="https://demofactory.cloud"
+    BACKEND_API_URL="https://demofactory.cloud"
 fi
 
 echo "🔗 API Base URL: $API_BASE_URL"
@@ -26,13 +26,13 @@ echo "🔗 Backend API URL: $BACKEND_API_URL"
 
 cat > .env.production << EOF
 NODE_ENV=production
-REACT_APP_API_BASE_URL=$API_BASE_URL
-REACT_APP_BACKEND_API_URL=$BACKEND_API_URL
+REACT_APP_API_BASE_URL=https://demofactory.cloud
+REACT_APP_BACKEND_API_URL=https://demofactory.cloud
 # 추가 도메인 지원
 # REACT_APP_API_BASE_URL=https://www.awsdemofactory.cloud
 # REACT_APP_BACKEND_API_URL=https://www.awsdemofactory.cloud
-REACT_APP_PDF_SERVER_URL=$API_BASE_URL
-REACT_APP_BEDROCK_SERVER_URL=$API_BASE_URL
+REACT_APP_PDF_SERVER_URL=https://demofactory.cloud
+REACT_APP_BEDROCK_SERVER_URL=https://demofactory.cloud
 REACT_APP_COGNITO_REGION=us-west-2
 # REACT_APP_COGNITO_IDENTITY_POOL_ID=us-west-2:f02cd74c-db8b-4809-9f26-be7a52e880b6 # 배포 환경에서 비활성화
 REACT_APP_COGNITO_USER_POOL_ID=us-west-2_35cY0az2M
