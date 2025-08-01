@@ -132,9 +132,9 @@ if command -v uv >/dev/null 2>&1; then
     source venv/bin/activate
     
     # uv로 패키지 설치 (pip보다 10-100배 빠름)
-    uv pip install flask flask-cors requests python-dotenv reportlab 2>/dev/null || {
+    uv pip install -r requirements.txt 2>/dev/null || {
         echo "⚠️ uv 설치 실패, pip으로 대체"
-        pip install --quiet flask flask-cors requests python-dotenv reportlab
+        pip install --quiet -r requirements.txt
     }
     
     echo "✅ uv로 Python 패키지 고속 설치 완료"
@@ -147,7 +147,7 @@ else
     fi
     
     source venv/bin/activate
-    pip install --quiet flask flask-cors requests 2>/dev/null || {
+    pip install --quiet -r requirements.txt 2>/dev/null || {
         echo "⚠️ Python 패키지 설치 실패"
     }
 fi
