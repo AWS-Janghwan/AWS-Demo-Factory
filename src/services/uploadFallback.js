@@ -8,14 +8,15 @@ export const uploadFileWithFallback = async (file, contentId, onProgress) => {
         '/api/files/upload'    // 2차 시도 (대체 엔드포인트)
     ];
     
-    const baseUrl = window.location.origin; // https://demofactory.cloud
+    // 상대 경로 사용으로 정적 서버 프록시를 통해 호출
+    const baseUrl = ''; // 상대 경로로 프록시 사용
     
     for (let i = 0; i < endpoints.length; i++) {
         const endpoint = endpoints[i];
-        const fullUrl = `${baseUrl}${endpoint}`;
         
         try {
             console.log(`🔄 [UploadFallback] 업로드 시도 ${i + 1}/${endpoints.length}: ${endpoint}`);
+            console.log(`🔗 [UploadFallback] 상대 경로 사용으로 프록시 통과: ${endpoint}`);
             
             const formData = new FormData();
             formData.append('file', file);
@@ -56,7 +57,9 @@ export const uploadFileWithFallback = async (file, contentId, onProgress) => {
                 });
             });
             
-            xhr.open('POST', fullUrl);
+            // 상대 경로로 프록시 통과
+            console.log(`🔥🔥 [UploadFallback] 상대 경로 업로드: ${endpoint}`);
+            xhr.open('POST', endpoint);
             xhr.timeout = 30000; // 30초 타임아웃
             xhr.send(formData);
             
