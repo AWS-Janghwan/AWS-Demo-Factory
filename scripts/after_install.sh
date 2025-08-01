@@ -109,48 +109,27 @@ else
     exit 1
 fi
 
-# 5. Python 환경 설정 (uv 사용으로 고속화)
+# 5. Python 환경 설정 (간소화)
 echo "🐍 Python 환경 설정 중..."
 cd python-pdf-server
 
-# uv 설치 (매우 빠름)
-echo "⚡ uv 패키지 매니저 설치 중..."
-curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null || {
-    echo "⚠️ uv 설치 실패, pip 사용"
-    UV_AVAILABLE=false
+# 가상환경 생성 (기존 사용 또는 새로 생성)
+if [ ! -d "venv" ]; then
+    echo "📦 Python 가상환경 생성..."
+    python3 -m venv venv
+fi
+
+# 가상환경 활성화
+source venv/bin/activate
+
+# 필수 패키지만 설치 (빠른 설치)
+echo "📦 필수 Python 패키지 설치..."
+pip install --quiet --no-cache-dir flask flask-cors requests python-dotenv reportlab 2>/dev/null || {
+    echo "⚠️ 기본 패키지 설치 실패, 최소 패키지만 설치"
+    pip install --quiet flask flask-cors requests
 }
 
-# PATH에 uv 추가
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# uv가 사용 가능한지 확인
-if command -v uv >/dev/null 2>&1; then
-    echo "⚡ uv로 Python 패키지 고속 설치 중..."
-    
-    # uv로 가상환경 생성 및 패키지 설치 (매우 빠름)
-    uv venv venv 2>/dev/null || python3 -m venv venv
-    source venv/bin/activate
-    
-    # uv로 패키지 설치 (pip보다 10-100배 빠름)
-    uv pip install -r requirements.txt 2>/dev/null || {
-        echo "⚠️ uv 설치 실패, pip으로 대체"
-        pip install --quiet -r requirements.txt
-    }
-    
-    echo "✅ uv로 Python 패키지 고속 설치 완료"
-else
-    echo "📦 pip으로 Python 기본 패키지 설치 중..."
-    
-    # 가상환경이 없는 경우만 생성
-    if [ ! -d "venv" ]; then
-        python3 -m venv venv
-    fi
-    
-    source venv/bin/activate
-    pip install --quiet -r requirements.txt 2>/dev/null || {
-        echo "⚠️ Python 패키지 설치 실패"
-    }
-fi
+echo "✅ Python 환경 설정 완료"
 
 cd ..
 
