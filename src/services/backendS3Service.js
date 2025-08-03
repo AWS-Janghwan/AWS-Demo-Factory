@@ -1,7 +1,12 @@
 // 백엔드 API를 통한 S3 서비스
-// 강제로 현재 도메인 사용 (환경 변수 무시)
 const BACKEND_API_URL = (() => {
-  // 상대 경로 사용으로 정적 서버 프록시를 통해 호출
+  // 로컬 환경에서는 직접 백엔드 서버 호출
+  if (window.location.hostname === 'localhost') {
+    console.log('🔥 [BackendS3] 로컬 환경: 직접 백엔드 호출');
+    return 'http://localhost:3001';
+  }
+  
+  // 배포 환경에서는 상대 경로 사용 (프록시 통해)
   console.log('🔥 [BackendS3] 상대 경로 모드: 프록시 사용');
   return ''; // 상대 경로 사용
 })();

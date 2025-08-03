@@ -664,6 +664,85 @@ app.get('/api/content/list', async (req, res) => {
   }
 });
 
+// DynamoDB에서 만료된 blob URL 정리 엔드포인트
+app.post('/api/content/cleanup-blob-urls', async (req, res) => {
+  try {
+    console.log('🧹 [백엔드] blob URL 정리 시작');
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
+    // 모든 콘텐츠 조회
+    const scanParams = {
+      TableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents'
+    };
+    
+    const result = await dynamodb.scan(scanParams).promise();
+    let updatedCount = 0;
+    
+    // 각 콘텐츠의 파일에서 blob URL 제거
+    for (const content of result.Items || []) {
+      if (content.files && content.files.length > 0) {
+        let hasUpdates = false;
+        const updatedFiles = content.files.map(file => {
+          // blob URL이 있는 파일 처리
+          if (file.url && file.url.startsWith('blob:')) {
+            console.log(`🗑️ [백엔드] blob URL 제거: ${file.name} - ${file.url}`);
+            hasUpdates = true;
+            return {
+              ...file,
+              url: undefined, // blob URL 제거
+              isLocal: false,
+              migrationNeeded: true
+            };
+          }
+          return file;
+        });
+        
+        // 업데이트가 필요한 경우 DynamoDB 업데이트
+        if (hasUpdates) {
+          const updateParams = {
+            TableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+            Key: { id: content.id },
+            UpdateExpression: 'SET files = :files, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+              ':files': updatedFiles,
+              ':updatedAt': new Date().toISOString()
+            }
+          };
+          
+          await dynamodb.update(updateParams).promise();
+          updatedCount++;
+          console.log(`✅ [백엔드] 콘텐츠 업데이트 완료: ${content.title}`);
+        }
+      }
+    }
+    
+    console.log(`🎉 [백엔드] blob URL 정리 완료: ${updatedCount}개 콘텐츠 업데이트`);
+    
+    res.json({
+      success: true,
+      message: `${updatedCount}개 콘텐츠에서 만료된 blob URL을 정리했습니다.`,
+      updatedCount
+    });
+    
+  } catch (error) {
+    console.error('❌ [백엔드] blob URL 정리 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // S3 파일 목록 조회 엔드포인트
 app.get('/api/s3/files', async (req, res) => {
   try {
@@ -854,6 +933,17 @@ app.post('/api/analytics/track', async (req, res) => {
       });
     }
     
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
     const dynamoParams = {
       TableName: 'DemoFactoryAnalytics',
       Item: {
@@ -889,6 +979,17 @@ app.post('/api/analytics/track', async (req, res) => {
 app.get('/api/analytics/data', async (req, res) => {
   try {
     console.log('📊 [백엔드] 분석 데이터 조회 시작');
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
     
     const { eventType, startDate, endDate } = req.query;
     

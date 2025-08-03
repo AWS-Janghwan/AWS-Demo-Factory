@@ -110,11 +110,13 @@ export const ContentProvider = ({ children }) => {
                     }
                   }
                   
-                  // S3에서 같은 이름의 파일 찾기
-                  const s3File = s3Files.find(s3f => 
-                    s3f.name === file.name || 
-                    s3f.key.includes(file.name)
-                  );
+                  // S3에서 같은 이름의 파일 찾기 (안전한 방식)
+                  const s3File = s3Files.find(s3f => {
+                    if (!s3f || !s3f.name) return false;
+                    if (s3f.name === file.name) return true;
+                    if (s3f.key && typeof s3f.key === 'string' && s3f.key.includes(file.name)) return true;
+                    return false;
+                  });
                   
                   if (s3File) {
                     console.log('☁️ [ContentContext] S3 파일 매칭 성공:', file.name, '→', s3File.url);

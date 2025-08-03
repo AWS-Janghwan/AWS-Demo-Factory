@@ -113,8 +113,14 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
       const [fullMatch, mediaType, fileName] = match;
       console.log(`🔍 [SimpleMarkdownRenderer] 태그 발견: ${fullMatch}, 타입: ${mediaType}, 파일명: ${fileName}`);
       
-      // 파일 목록에서 해당 파일 찾기
+      // 파일 목록에서 해당 파일 찾기 (안전한 방식)
       const mediaFile = files.find(file => {
+        // fileName이 undefined이거나 file.name이 undefined인 경우 처리
+        if (!fileName || !file || !file.name) {
+          console.log(`⚠️ [SimpleMarkdownRenderer] 잘못된 파일 정보: fileName=${fileName}, file.name=${file?.name}`);
+          return false;
+        }
+        
         const nameMatch = file.name === fileName || 
                          file.name.includes(fileName) ||
                          fileName.includes(file.name);

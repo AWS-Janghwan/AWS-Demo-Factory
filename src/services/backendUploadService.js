@@ -1,12 +1,17 @@
 // 백엔드 API를 통한 안전한 파일 업로드 서비스
 // 브라우저에서 직접 AWS 자격 증명을 사용하지 않고 백엔드 서버를 통해 업로드
 
-// Mixed Content 해결: 현재 도메인 사용 (프록시 통해)
+// Mixed Content 해결: 환경별 API URL 설정
 const getBackendUrl = () => {
-  // 배포 환경에서 프록시 사용을 위해 상대 경로 사용
   if (typeof window !== 'undefined') {
-    // 현재 도메인에서 프록시를 통해 API 호출
-    const url = window.location.origin; // protocol + host 포함
+    // 로컬 환경에서는 직접 백엔드 서버 호출
+    if (window.location.hostname === 'localhost') {
+      console.log('🔥🔥🔥 [BackendUpload] 로컬 환경: 직접 백엔드 호출');
+      return 'http://localhost:3001';
+    }
+    
+    // 배포 환경에서는 프록시 사용
+    const url = window.location.origin;
     console.log('🔥🔥🔥 [BackendUpload] 프록시 사용 모드:', url);
     console.log('🔥🔥🔥 [BackendUpload] 상대 경로로 API 호출');
     return url;

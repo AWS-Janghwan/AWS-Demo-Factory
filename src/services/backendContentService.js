@@ -3,7 +3,13 @@
 
 // Mixed Content 해결: 현재 도메인 사용 (프록시 통해)
 const getBackendUrl = () => {
-  // 상대 경로 사용으로 정적 서버 프록시를 통해 호출
+  // 로컬 환경에서는 직접 백엔드 서버 호출
+  if (window.location.hostname === 'localhost') {
+    console.log('🔥🔥🔥 [BackendContent] 로컬 환경: 직접 백엔드 호출');
+    return 'http://localhost:3001';
+  }
+  
+  // 배포 환경에서는 상대 경로 사용 (프록시 통해)
   console.log('🔥🔥🔥 [BackendContent] 상대 경로 모드: 프록시 사용');
   console.log('🔥🔥🔥 [BackendContent] 상대 경로로 API 호출');
   return ''; // 상대 경로 사용

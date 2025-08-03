@@ -134,19 +134,37 @@ const ContentUploadPage = () => {
         console.log(`✅ [ContentUploadPage] 보안 업로드 완료: ${file.name}`);
 
         // 백엔드 업로드 결과 처리
+        console.log('📝 [ContentUploadPage] 업로드 결과 원본:', uploadResult);
+        
+        // 백엔드 응답에서 file 객체 추출
+        const fileData = uploadResult.file || uploadResult;
+        console.log('📝 [ContentUploadPage] 파일 데이터:', fileData);
+        
         let fileUrl;
-        if (uploadResult && typeof uploadResult === 'object' && uploadResult.s3Key) {
+        if (fileData && fileData.s3Key) {
           // 백엔드 스트리밍 URL 사용
-          fileUrl = `http://localhost:3001/api/s3/file/${encodeURIComponent(uploadResult.s3Key)}`;
+          fileUrl = `http://localhost:3001/api/s3/file/${encodeURIComponent(fileData.s3Key)}`;
+          console.log('🔗 [ContentUploadPage] S3 스트리밍 URL 생성:', fileUrl);
+        } else if (fileData && fileData.url) {
+          fileUrl = fileData.url;
+          console.log('🔗 [ContentUploadPage] 기존 URL 사용:', fileUrl);
         } else {
-          fileUrl = uploadResult.url || uploadResult.fileUrl || uploadResult;
+          console.log('⚠️ [ContentUploadPage] URL 정보를 찾을 수 없음');
+          fileUrl = null;
         }
 
         const uploadedFile = {
-          ...uploadResult,
+          ...fileData,
           id: fileId,
-          url: fileUrl
+          url: fileUrl,
+          name: file.name, // 원본 파일명 보장
+          type: file.type, // 원본 파일 타입 보장
+          size: file.size, // 원본 파일 크기 보장
+          s3Key: fileData?.s3Key, // S3 키 보장
+          isSecure: true
         };
+        
+        console.log('📝 [ContentUploadPage] 업로드된 파일 정보:', uploadedFile);
 
         newUploadedFiles.push(uploadedFile);
 
@@ -200,7 +218,7 @@ const ContentUploadPage = () => {
 
   // 태그 복사
   const copyMediaTag = (file) => {
-    const mediaTag = file.type.startsWith('video/') 
+    const mediaTag = (file.type && file.type.startsWith('video/')) 
       ? `[video:${file.name}]`
       : `[image:${file.name}]`;
     
@@ -212,7 +230,7 @@ const ContentUploadPage = () => {
 
   // 커서 위치에 미디어 삽입
   const insertMediaToContent = (file) => {
-    const mediaTag = file.type.startsWith('video/') 
+    const mediaTag = (file.type && file.type.startsWith('video/')) 
       ? `[video:${file.name}]`
       : `[image:${file.name}]`;
     
@@ -381,7 +399,7 @@ const ContentUploadPage = () => {
       <CardContent sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-            {file.type.startsWith('image/') ? (
+            {(file.type && file.type.startsWith('image/')) ? (
               <ImageIcon color="primary" sx={{ mr: 1 }} />
             ) : (
               <VideoFileIcon color="secondary" sx={{ mr: 1 }} />
@@ -394,12 +412,12 @@ const ContentUploadPage = () => {
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </Typography>
               <Typography variant="caption" display="block" color="primary" sx={{ fontFamily: 'monospace' }}>
-                태그: [{file.type.startsWith('video/') ? 'video' : 'image'}:{file.name}]
+                태그: [{(file.type && file.type.startsWith('video/')) ? 'video' : 'image'}:{file.name}]
               </Typography>
             </Box>
           </Box>
           
-          {file.type.startsWith('video/') && (
+          {(file.type && file.type.startsWith('video/')) && (
             <IconButton 
               size="small" 
               onClick={() => {
@@ -447,7 +465,7 @@ const ContentUploadPage = () => {
           </IconButton>
         </Box>
         
-        {file.type.startsWith('image/') && (
+        {(file.type && file.type.startsWith('image/')) && (
           <Box sx={{ mt: 2 }}>
             {getPreviewUrl(file) ? (
               <img 
