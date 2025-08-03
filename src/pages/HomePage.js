@@ -42,21 +42,31 @@ const HomePage = () => {
     popularTags
   } = useContentSearch();
 
-  // 파일 목록 로드
+  // 파일 목록 로드 (성능 최적화)
   useEffect(() => {
+    let isMounted = true;
+    
     const loadFiles = async () => {
       try {
         const files = await getLocalFiles();
-        setAllFiles(files);
-        console.log(`📁 [HomePage] ${files.length}개 파일 로드 완료`);
+        if (isMounted) {
+          setAllFiles(files);
+          console.log(`📁 [HomePage] ${files.length}개 파일 로드 완료`);
+        }
       } catch (error) {
-        console.error('HomePage 파일 로드 실패:', error);
-        setAllFiles([]);
+        if (isMounted) {
+          console.error('HomePage 파일 로드 실패:', error);
+          setAllFiles([]);
+        }
       }
     };
 
     loadFiles();
-  }, []);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // 빈 의존성 배열로 한 번만 실행
 
   // 콘텐츠 데이터 로드 및 분류
   useEffect(() => {
