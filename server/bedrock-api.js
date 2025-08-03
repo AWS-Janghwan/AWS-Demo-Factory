@@ -107,7 +107,9 @@ app.use(cors({
     'https://demofactory.cloud',
     'https://www.demofactory.cloud',
     'https://awsdemofactory.cloud',
-    'https://www.awsdemofactory.cloud'
+    'https://www.awsdemofactory.cloud',
+    'http://demo-factory-alb-10818307.ap-northeast-2.elb.amazonaws.com',
+    'https://demo-factory-alb-10818307.ap-northeast-2.elb.amazonaws.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],

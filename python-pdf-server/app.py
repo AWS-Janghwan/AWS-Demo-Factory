@@ -19,7 +19,9 @@ CORS(app, origins=[
     'https://demofactory.cloud',
     'https://www.demofactory.cloud',
     'https://awsdemofactory.cloud',
-    'https://www.awsdemofactory.cloud'
+    'https://www.awsdemofactory.cloud',
+    'http://demo-factory-alb-10818307.ap-northeast-2.elb.amazonaws.com',
+    'https://demo-factory-alb-10818307.ap-northeast-2.elb.amazonaws.com'
 ], supports_credentials=True, max_age=86400)
 
 @app.route('/health', methods=['GET'])

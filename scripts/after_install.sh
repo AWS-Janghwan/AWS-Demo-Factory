@@ -26,13 +26,11 @@ echo "🔗 Backend API URL: $BACKEND_API_URL"
 
 cat > .env.production << EOF
 NODE_ENV=production
-REACT_APP_API_BASE_URL=https://demofactory.cloud
-REACT_APP_BACKEND_API_URL=https://demofactory.cloud
-# 추가 도메인 지원
-# REACT_APP_API_BASE_URL=https://www.awsdemofactory.cloud
-# REACT_APP_BACKEND_API_URL=https://www.awsdemofactory.cloud
-REACT_APP_PDF_SERVER_URL=https://demofactory.cloud
-REACT_APP_BEDROCK_SERVER_URL=https://demofactory.cloud
+# 배포 환경에서는 상대 경로 사용 (프록시 통해)
+REACT_APP_API_BASE_URL=
+REACT_APP_BACKEND_API_URL=
+REACT_APP_PDF_SERVER_URL=
+REACT_APP_BEDROCK_SERVER_URL=
 REACT_APP_COGNITO_REGION=us-west-2
 # REACT_APP_COGNITO_IDENTITY_POOL_ID=us-west-2:f02cd74c-db8b-4809-9f26-be7a52e880b6 # 배포 환경에서 비활성화
 REACT_APP_COGNITO_USER_POOL_ID=us-west-2_35cY0az2M
