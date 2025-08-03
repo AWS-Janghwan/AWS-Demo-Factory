@@ -1,6 +1,16 @@
 // Amazon Bedrock 클라이언트 (백엔드 API 호출 방식)
 
-const BEDROCK_API_BASE_URL = 'http://localhost:5001/api/bedrock';
+const BEDROCK_API_BASE_URL = (() => {
+  const bedrockUrl = process.env.REACT_APP_BEDROCK_SERVER_URL;
+  if (bedrockUrl) {
+    return `${bedrockUrl}/api/bedrock`;
+  }
+  // 배포 환경에서는 상대 경로 사용 (프록시 통해)
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/bedrock`;
+  }
+  return 'http://localhost:5001/api/bedrock';
+})();
 
 /**
  * 백엔드 API를 통해 Claude 4 Sonnet 호출

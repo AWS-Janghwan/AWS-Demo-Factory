@@ -435,7 +435,8 @@ const AdminPage = () => {
     try {
       console.log('👥 백엔드 API를 통한 사용자 목록 조회 시작...');
       
-      const response = await fetch('http://localhost:3001/api/cognito/users');
+      const backendUrl = process.env.REACT_APP_BACKEND_API_URL || window.location.origin;
+      const response = await fetch(`${backendUrl}/api/cognito/users`);
       const data = await response.json();
       
       if (data.success) {
@@ -471,7 +472,8 @@ const AdminPage = () => {
     try {
       console.log(`🔄 사용자 ${username}의 역할을 ${newRole}로 변경 시작...`);
       
-      const response = await fetch(`http://localhost:3001/api/cognito/users/${username}/role`, {
+      const backendUrl = process.env.REACT_APP_BACKEND_API_URL || window.location.origin;
+      const response = await fetch(`${backendUrl}/api/cognito/users/${username}/role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

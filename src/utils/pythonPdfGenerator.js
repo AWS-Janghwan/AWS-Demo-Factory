@@ -1,13 +1,27 @@
 // Python PDF 생성 서버 연동 유틸리티
 
-const PYTHON_PDF_API_BASE_URL = 'http://localhost:5002';
+const PYTHON_PDF_API_BASE_URL = (() => {
+  const pdfUrl = process.env.REACT_APP_PDF_SERVER_URL;
+  if (pdfUrl) {
+    return pdfUrl;
+  }
+  // 배포 환경에서는 상대 경로 사용 (프록시 통해)
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'http://localhost:5002';
+})();
 
 /**
  * Python PDF 서버 상태 확인
  */
 export const checkPythonPdfServerStatus = async () => {
   try {
-    const response = await fetch(`${PYTHON_PDF_API_BASE_URL}/health`);
+    // 배포 환경에서는 프록시 경로 사용
+    const healthUrl = PYTHON_PDF_API_BASE_URL.includes('localhost') 
+      ? `${PYTHON_PDF_API_BASE_URL}/health`
+      : `${PYTHON_PDF_API_BASE_URL}/api/pdf/health`;
+    const response = await fetch(healthUrl);
     const result = await response.json();
     return result.status === 'healthy';
   } catch (error) {
