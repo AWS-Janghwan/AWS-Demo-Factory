@@ -65,6 +65,15 @@ export const uploadFileWithFallback = async (file, contentId, onProgress) => {
             
             const result = await uploadPromise;
             console.log(`🎉 [UploadFallback] 최종 성공: ${endpoint}`);
+            
+            // 파일 업로드 성공 후 캐시 무효화
+            try {
+                localStorage.removeItem('demo-factory-s3-files');
+                console.log('🧹 파일 업로드 후 캐시 무효화 완료');
+            } catch (cacheError) {
+                console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+            }
+            
             return result;
             
         } catch (error) {

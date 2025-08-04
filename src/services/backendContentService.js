@@ -43,6 +43,15 @@ class BackendContentService {
             
             if (response.ok && data.success) {
                 console.log('✅ [BackendContent] 콘텐츠 저장 성공:', data.content.title);
+                
+                // 캐시 무효화 (콘텐츠 목록 캐시 무효화)
+                try {
+                    localStorage.removeItem('demo-factory-s3-files');
+                    console.log('🧹 콘텐츠 저장 후 캐시 무효화 완료');
+                } catch (cacheError) {
+                    console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+                }
+                
                 return data.content;
             } else {
                 throw new Error(data.error || '콘텐츠 저장 실패');
@@ -111,6 +120,42 @@ export const getAllContents = () => {
 
 export const checkBackendStatus = () => {
     return backendContentService.checkBackendStatus();
+};
+
+export const deleteContent = async (id) => {
+    try {
+        console.log('🗑️ [BackendContent] 백엔드를 통한 콘텐츠 삭제 시작:', id);
+        
+        const apiUrl = getBackendUrl();
+        const response = await fetch(`${apiUrl}/api/content/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            console.log('✅ [BackendContent] 콘텐츠 삭제 성공:', id);
+            
+            // 캐시 무효화 (콘텐츠 목록 캐시 무효화)
+            try {
+                localStorage.removeItem('demo-factory-s3-files');
+                console.log('🧹 콘텐츠 삭제 후 캐시 무효화 완료');
+            } catch (cacheError) {
+                console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+            }
+            
+            return true;
+        } else {
+            throw new Error(data.error || '콘텐츠 삭제 실패');
+        }
+        
+    } catch (error) {
+        console.error('❌ [BackendContent] 콘텐츠 삭제 실패:', error);
+        throw new Error(`백엔드 콘텐츠 삭제 실패: ${error.message}`);
+    }
 };
 
 // default export

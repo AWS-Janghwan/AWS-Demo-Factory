@@ -1,0 +1,29 @@
+{
+    "Comment": "Change domain to point to working CloudFront distribution",
+    "Changes": [
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "demofactory.cloud.",
+                "Type": "A",
+                "AliasTarget": {
+                    "HostedZoneId": "Z2FDTNDATAQYW2",
+                    "DNSName": "d1erulvg3pqs97.cloudfront.net.",
+                    "EvaluateTargetHealth": false
+                }
+            }
+        },
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "demofactory.cloud.",
+                "Type": "AAAA",
+                "AliasTarget": {
+                    "HostedZoneId": "Z2FDTNDATAQYW2",
+                    "DNSName": "d1erulvg3pqs97.cloudfront.net.",
+                    "EvaluateTargetHealth": false
+                }
+            }
+        }
+    ]
+}

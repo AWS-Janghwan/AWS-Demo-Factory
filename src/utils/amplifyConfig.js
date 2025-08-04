@@ -339,6 +339,14 @@ export const deleteLocalFile = async (fileId) => {
       console.warn('⚠️ localStorage 삭제 실패:', error);
     }
     
+    // 3. 파일 목록 캐시 무효화
+    try {
+      localStorage.removeItem('demo-factory-s3-files');
+      console.log('🧹 파일 삭제 후 캐시 무효화 완료');
+    } catch (cacheError) {
+      console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ 파일 삭제 실패:', error);

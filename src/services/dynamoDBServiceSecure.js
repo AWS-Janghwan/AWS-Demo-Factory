@@ -145,6 +145,14 @@ export const updateContent = async (id, updates) => {
     const result = await db.update(params).promise();
     console.log('✅ 콘텐츠 업데이트 성공');
     
+    // 캐시 무횤화 (콘텐츠 목록 캐시 무효화)
+    try {
+      localStorage.removeItem('demo-factory-s3-files');
+      console.log('🧹 콘텐츠 업데이트 후 캐시 무효화 완료');
+    } catch (cacheError) {
+      console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+    }
+    
     return result.Attributes;
   } catch (error) {
     console.error('❌ updateContent 오류:', error);
@@ -165,6 +173,14 @@ export const deleteContent = async (id) => {
     console.log(`🗑️ 콘텐츠 삭제 중 (ID: ${id})`);
     await db.delete(params).promise();
     console.log('✅ 콘텐츠 삭제 성공');
+    
+    // 캐시 삭제 (콘텐츠 목록 캐시 무효화)
+    try {
+      localStorage.removeItem('demo-factory-s3-files');
+      console.log('🧹 콘텐츠 삭제 후 캐시 무효화 완료');
+    } catch (cacheError) {
+      console.warn('⚠️ 캐시 삭제 실패 (무시 가능):', cacheError);
+    }
     
     return true;
   } catch (error) {

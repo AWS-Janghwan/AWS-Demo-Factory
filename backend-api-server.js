@@ -666,6 +666,46 @@ app.get('/api/content/list', async (req, res) => {
   }
 });
 
+// DynamoDB에서 콘텐츠 삭제 엔드포인트
+app.delete('/api/content/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️ [백엔드] 콘텐츠 삭제 시작: ${id}`);
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
+    const params = {
+      TableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+      Key: { id }
+    };
+    
+    await dynamodb.delete(params).promise();
+    
+    console.log(`✅ [백엔드] 콘텐츠 삭제 성공: ${id}`);
+    
+    res.json({
+      success: true,
+      message: '콘텐츠가 성공적으로 삭제되었습니다.'
+    });
+    
+  } catch (error) {
+    console.error('❌ [백엔드] 콘텐츠 삭제 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // DynamoDB에서 만료된 blob URL 정리 엔드포인트
 app.post('/api/content/cleanup-blob-urls', async (req, res) => {
   try {

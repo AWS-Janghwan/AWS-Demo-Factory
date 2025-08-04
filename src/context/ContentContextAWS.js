@@ -394,6 +394,7 @@ export const ContentProvider = ({ children }) => {
       setError(null);
 
       console.log('🗑️ [ContentContext] 보안 콘텐츠 삭제 시작:', id);
+      console.log('📊 [ContentContext] 삭제 전 콘텐츠 개수:', contents.length);
 
       // 콘텐츠 정보 조회
       const content = contents.find(c => c.id === id);
@@ -408,18 +409,25 @@ export const ContentProvider = ({ children }) => {
         }
       }
 
-      // TODO: 백엔드를 통한 삭제 기능 추가 필요
-      // await deleteContentFromBackend(id);
-      console.log('⚠️ 임시로 로컬에서만 삭제됨 (DynamoDB 삭제 기능 추가 필요)');
+      // 백엔드를 통한 삭제
+      const { deleteContent: deleteContentFromBackend } = await import('../services/backendContentService');
+      await deleteContentFromBackend(id);
+      console.log('✅ DynamoDB에서 콘텐츠 삭제 완료');
       
       // 로컬 상태에서 제거
-      setContents(prevContents => prevContents.filter(content => content.id !== id));
+      console.log('🔄 [ContentContext] React 상태 업데이트 시작...');
+      setContents(prevContents => {
+        const filteredContents = prevContents.filter(content => content.id !== id);
+        console.log('📊 [ContentContext] 상태 업데이트:', prevContents.length, '→', filteredContents.length);
+        return filteredContents;
+      });
 
       // localStorage 백업 업데이트
       const updatedContents = contents.filter(content => content.id !== id);
       localStorage.setItem('demo-factory-contents', JSON.stringify(updatedContents));
 
       console.log(`✅ [ContentContext] 보안 콘텐츠 삭제 완료: ${id}`);
+      console.log('🎉 [ContentContext] 삭제 프로세스 완전 완료!');
       return true;
 
     } catch (error) {
