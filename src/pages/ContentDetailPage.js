@@ -36,7 +36,7 @@ import SimpleMarkdownRenderer from '../components/SimpleMarkdownRenderer';
 const ContentDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getContentById, deleteContent, incrementViews, toggleLike, isLikedByUser, getSecureFileUrl } = useContent();
+  const { getContentById, deleteContent, incrementViews, toggleLike, isLikedByUser, getSecureFileUrl, loading: contextLoading } = useContent();
   const { trackPageView } = useAnalytics();
   const { user, isContentManager } = useAuth();
   const [content, setContent] = useState(null);
@@ -51,7 +51,23 @@ const ContentDetailPage = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const foundContent = getContentById(id); // parseInt 제거
+        // ContentContext가 아직 로딩 중이면 기다림
+        if (contextLoading) {
+          console.log('⏳ [ContentDetailPage] ContentContext 로딩 중, 대기...');
+          return;
+        }
+        
+        console.log('🔍 [ContentDetailPage] 콘텐츠 조회 시작:', id);
+        const foundContent = await getContentById(id);
+        
+        if (!foundContent) {
+          console.warn('❌ [ContentDetailPage] 콘텐츠를 찾을 수 없음:', id);
+          setContent(null);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('✅ [ContentDetailPage] 콘텐츠 발견:', foundContent.title);
         setContent(foundContent);
         
         if (foundContent) {
@@ -132,7 +148,7 @@ const ContentDetailPage = () => {
     };
 
     fetchContent();
-  }, [id]); // id만 의존성으로 설정하여 무한 렌더링 방지
+  }, [id, contextLoading]); // contextLoading을 의존성에 추가
 
   // 수정/삭제 권한 체크 함수
   const canEditContent = () => {
@@ -150,29 +166,43 @@ const ContentDetailPage = () => {
     try {
       await deleteContent(content.id);
       setDeleteDialogOpen(false);
-      navigate('/', { replace: true });
+      navigate('/');
     } catch (error) {
       console.error('콘텐츠 삭제 실패:', error);
-      alert('콘텐츠 삭제에 실패했습니다.');
     }
   };
 
-  // 좋아요 핸들러
-  const handleLikeClick = () => {
-    if (user && content) {
-      toggleLike(content.id, user.id);
-      // 상태 업데이트를 위해 콘텐츠 다시 가져오기
-      const updatedContent = getContentById(parseInt(id));
+  // 좋아요 토글 처리
+  const handleToggleLike = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    
+    try {
+      await toggleLike(content.id, user.email || user.name);
+      // 상태 업데이트는 Context에서 자동으로 처리됨
+      const updatedContent = getContentById(content.id);
       setContent(updatedContent);
+    } catch (error) {
+      console.error('좋아요 토글 실패:', error);
     }
   };
 
-  const isLiked = user && content ? isLikedByUser(content.id, user.id) : false;
+  // 미디어 다이얼로그 열기
+  const handleMediaClick = (media) => {
+    setSelectedMedia(media);
+    setMediaDialogOpen(true);
+  };
 
-  if (loading) {
+  console.log("🔍 [ContentDetailPage] 렌더링 상태:", { loading, contextLoading, content: content?.title, id });
+  // 로딩 중이거나 콘텐츠가 없는 경우
+  if (loading || contextLoading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography>로딩 중...</Typography>
+        <Typography variant="h6" align="center">
+          콘텐츠를 불러오는 중... (디버깅 중)
+        </Typography>
       </Container>
     );
   }
@@ -180,254 +210,170 @@ const ContentDetailPage = () => {
   if (!content) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          콘텐츠를 찾을 수 없습니다
-        </Typography>
-        <MuiLink component={Link} to="/" color="primary">
+        <Alert severity="error" sx={{ mb: 2 }}>
+          콘텐츠를 찾을 수 없습니다.
+        </Alert>
+        <Button component={Link} to="/" variant="contained">
           홈으로 돌아가기
-        </MuiLink>
+        </Button>
       </Container>
     );
   }
 
-  // Get category path for breadcrumbs
-  const categoryPath = content.category ? content.category.toLowerCase().replace('/', '-') : 'uncategorized';
-
-  // 미디어 파일 분류 - 하이브리드 파일 시스템 사용
-
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <Breadcrumbs 
-        separator={<NavigateNextIcon fontSize="small" />} 
-        aria-label="breadcrumb"
-        sx={{ mb: 2 }}
-      >
-        <MuiLink component={Link} to="/" color="inherit" underline="hover">
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 3 }}>
+        <MuiLink component={Link} to="/" underline="hover" color="inherit">
           홈
         </MuiLink>
-        <MuiLink 
-          component={Link} 
-          to={`/category/${categoryPath}`} 
-          color="inherit" 
-          underline="hover"
-        >
-          {content.category || 'Uncategorized'}
+        <MuiLink component={Link} to={`/?category=${encodeURIComponent(content.category)}`} underline="hover" color="inherit">
+          {content.category}
         </MuiLink>
         <Typography color="text.primary">{content.title}</Typography>
       </Breadcrumbs>
-      
-      {/* 빈 URL 경고 */}
-      {hasEmptyUrls && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          일부 미디어 파일의 URL이 손실되었습니다. 콘텐츠를 수정하여 파일을 다시 업로드해주세요.
-          <Button 
-            size="small" 
-            onClick={() => navigate(`/content/${content.id}/edit`)}
-            sx={{ ml: 2 }}
-          >
-            수정하기
-          </Button>
-        </Alert>
-      )}
-      
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
+
+      {/* Content Header */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Typography variant="h3" component="h1" gutterBottom fontWeight={700} sx={{ flex: 1 }}>
+          <Typography variant="h4" component="h1" sx={{ flex: 1, mr: 2 }}>
             {content.title}
           </Typography>
           
-          {/* 수정/삭제 버튼 - 권한이 있는 사용자만 표시 */}
-          {canEditContent() && (
-            <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<EditIcon />}
-                onClick={() => navigate(`/content/${content.id}/edit`)}
-                size="small"
-              >
-                수정
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={() => setDeleteDialogOpen(true)}
-                size="small"
-              >
-                삭제
-              </Button>
-            </Box>
-          )}
-        </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-          <Chip 
-            label={content.category || 'Uncategorized'}
-            color="primary" 
-            variant="outlined"
-          />
-          
-          {content.tags && content.tags.map((tag) => (
-            <Chip 
-              key={tag}
-              label={tag} 
-              size="small" 
-              variant="outlined"
-            />
-          ))}
-        </Box>
-        
-        {/* 조회수, 좋아요, 작성일 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            {/* 작성자 및 작성일 */}
-            <Typography variant="body2" color="text.secondary">
-              {content.author} • {new Date(content.createdAt).toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-              {content.updatedAt !== content.createdAt && (
-                <> • 수정됨 {new Date(content.updatedAt).toLocaleDateString('ko-KR')}</>
-              )}
-            </Typography>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            {/* 조회수 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <VisibilityIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary">
-                {content.views || 0}
-              </Typography>
-            </Box>
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {canEditContent() && (
+              <>
+                <Tooltip title="수정">
+                  <IconButton 
+                    component={Link} 
+                    to={`/content/${content.id}/edit`}
+                    color="primary"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="삭제">
+                  <IconButton 
+                    onClick={() => setDeleteDialogOpen(true)}
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
             
-            {/* 좋아요 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Tooltip title={user ? (isLiked ? "좋아요 취소" : "좋아요") : "로그인이 필요합니다"}>
-                <IconButton
-                  onClick={handleLikeClick}
-                  disabled={!user}
-                  size="small"
-                  sx={{ 
-                    color: isLiked ? 'error.main' : 'text.secondary',
-                    '&:hover': {
-                      color: 'error.main'
-                    }
-                  }}
-                >
-                  {isLiked ? <FavoriteIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderIcon sx={{ fontSize: 20 }} />}
+            {user && (
+              <Tooltip title={isLikedByUser(content.id, user.email || user.name) ? "좋아요 취소" : "좋아요"}>
+                <IconButton onClick={handleToggleLike} color="error">
+                  {isLikedByUser(content.id, user.email || user.name) ? <FavoriteIcon /> : <FavoriteBorderIcon />}
                 </IconButton>
               </Tooltip>
-              <Typography variant="body2" color="text.secondary">
-                {content.likes || 0}
-              </Typography>
-            </Box>
+            )}
           </Box>
         </Box>
-        
-        <Divider sx={{ mb: 3 }} />
-        
-        <Typography variant="body1" color="text.secondary" paragraph>
-          {content.description}
-        </Typography>
-      </Box>
 
-      {/* 메인 콘텐츠 - 전체 너비 사용 */}
-      <Box sx={{ width: '100%' }}>
-        {/* 마크다운 콘텐츠 */}
-        {content.content && (
-          <Paper sx={{ p: 4 }}>
-            <SimpleMarkdownRenderer content={content.content} files={allFiles || []} />
-          </Paper>
-        )}
-      </Box>
-
-      {/* 삭제 확인 다이얼로그 */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          콘텐츠 삭제 확인
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            정말로 이 콘텐츠를 삭제하시겠습니까?<br/>
-            <strong>"{content.title}"</strong><br/>
-            삭제된 콘텐츠는 복구할 수 없습니다.
+        {/* Content Meta */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+          <Chip label={content.category} color="primary" variant="outlined" />
+          <Chip 
+            icon={<VisibilityIcon />} 
+            label={`조회 ${content.views || 0}`} 
+            variant="outlined" 
+          />
+          <Chip 
+            icon={<FavoriteIcon />} 
+            label={`좋아요 ${content.likes || 0}`} 
+            variant="outlined" 
+          />
+          <Typography variant="body2" color="text.secondary" sx={{ alignSelf: 'center' }}>
+            작성자: {content.author} | {new Date(content.createdAt).toLocaleDateString('ko-KR')}
           </Typography>
-        </DialogContent>
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
-            취소
-          </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
-            variant="contained"
-          >
-            삭제
-          </Button>
         </Box>
-      </Dialog>
 
-      {/* 미디어 확대 보기 다이얼로그 */}
-      <Dialog
-        open={mediaDialogOpen}
+        {/* Tags */}
+        {content.tags && content.tags.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {content.tags.map((tag, index) => (
+              <Chip key={index} label={tag} size="small" variant="outlined" />
+            ))}
+          </Box>
+        )}
+
+        {/* Description */}
+        {content.description && (
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            {content.description}
+          </Typography>
+        )}
+      </Paper>
+
+      {/* Empty URLs Warning */}
+      {hasEmptyUrls && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          일부 파일의 URL이 생성되지 않았습니다. 파일을 다시 업로드해주세요.
+        </Alert>
+      )}
+
+      {/* Content Body */}
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <SimpleMarkdownRenderer 
+          content={content.content} 
+          files={allFiles}
+          onMediaClick={handleMediaClick}
+        />
+      </Paper>
+
+      {/* Media Dialog */}
+      <Dialog 
+        open={mediaDialogOpen} 
         onClose={() => setMediaDialogOpen(false)}
         maxWidth="lg"
         fullWidth
-        PaperProps={{
-          sx: { backgroundColor: 'black' }
-        }}
       >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          color: 'white',
-          backgroundColor: 'black'
-        }}>
-          <Typography variant="h6" color="white">
-            {selectedMedia?.name}
-          </Typography>
-          <IconButton 
-            onClick={() => setMediaDialogOpen(false)}
-            sx={{ color: 'white' }}
-          >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          미디어 보기
+          <IconButton onClick={() => setMediaDialogOpen(false)}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 0, backgroundColor: 'black' }}>
+        <DialogContent>
           {selectedMedia && (
-            selectedMedia.type.startsWith('video/') ? (
-              <ReactPlayer
+            selectedMedia.type?.startsWith('image/') ? (
+              <img 
+                src={selectedMedia.url} 
+                alt={selectedMedia.name}
+                style={{ width: '100%', height: 'auto' }}
+              />
+            ) : selectedMedia.type?.startsWith('video/') ? (
+              <ReactPlayer 
                 url={selectedMedia.url}
-                width="100%"
-                height="70vh"
                 controls
-                playing
+                width="100%"
+                height="auto"
               />
             ) : (
-              <Box sx={{ textAlign: 'center', p: 2 }}>
-                <img
-                  src={selectedMedia.url}
-                  alt={selectedMedia.name}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '70vh',
-                    objectFit: 'contain'
-                  }}
-                />
-              </Box>
+              <Typography>지원되지 않는 미디어 형식입니다.</Typography>
             )
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>콘텐츠 삭제</DialogTitle>
+        <DialogContent>
+          <Typography>
+            정말로 이 콘텐츠를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </Typography>
+        </DialogContent>
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)}>취소</Button>
+          <Button onClick={handleDelete} color="error" variant="contained">
+            삭제
+          </Button>
+        </Box>
       </Dialog>
     </Container>
   );

@@ -48,292 +48,98 @@ export const ContentProvider = ({ children }) => {
         }
         
         // 파일 URL을 S3 URL로 변환
-        const contentsWithS3URLs = await Promise.all(
-          dynamoContents.map(async (content) => {
-            if (content.files && content.files.length > 0) {
-              const updatedFiles = await Promise.all(
-                content.files.map(async (file) => {
-                  // 이미 S3 URL이 있으면 그대로 사용
-                  if (file.url && file.url.startsWith('https://')) {
-                    console.log('☁️ [ContentContext] S3 URL 사용:', file.name, file.url);
-                    return file;
-                  }
-                  
-                  // S3 키가 있으면 백엔드 스트리밍 URL 생성 (환경별 동적 URL)
-                  if (file.s3Key) {
-                    try {
-                      const encodedS3Key = encodeURIComponent(file.s3Key);
-                      // 환경별 백엔드 URL 생성
-                      // 동적 URL 생성 (빈 문자열 방지)
-                      // 안전한 백엔드 URL 생성
-                      let backendBaseUrl;
-                      const envUrl = process.env.REACT_APP_BACKEND_API_URL;
-                      
-                      // 배포 환경에서 환경 변수 문제 해결을 위해 강제로 현재 도메인 사용
-                      console.log('🔍 [ContentContext] 환경 변수 확인:', envUrl);
-                      
-                      // 환경 변수가 유효한지 확인 (더 엄격한 검증)
-                      const isValidEnvUrl = envUrl && 
-                                           typeof envUrl === 'string' && 
-                                           envUrl.trim().length > 10 && 
-                                           envUrl !== 'undefined' && 
-                                           envUrl !== 'null' && 
-                                           envUrl !== 'https://' && 
-                                           envUrl !== 'http://' &&
-                                           (envUrl.startsWith('https://') || envUrl.startsWith('http://'));
-                      
-                      if (isValidEnvUrl) {
-                        backendBaseUrl = envUrl.trim();
-                        console.log('✅ [ContentContext] 환경 변수 사용:', backendBaseUrl);
-                      } else {
-                        console.log('⚠️ [ContentContext] 환경 변수 무효, 동적 생성 사용:', envUrl);
-                        // 현재 도메인 기반 동적 생성 (포트 포함)
-                        if (typeof window !== 'undefined') {
-                          const protocol = window.location.protocol;
-                          const host = window.location.host; // hostname + port 포함
-                          backendBaseUrl = `${protocol}//${host}`;
-                        } else {
-                          backendBaseUrl = 'http://localhost:3001';
-                        }
-                      }
-                      console.log('🔗 [ContentContext] 백엔드 URL:', backendBaseUrl);
-                      const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
-                      console.log('🔒 [ContentContext] 백엔드 스트리밍 URL 생성:', file.name, streamingUrl);
-                      return {
-                        ...file,
-                        url: streamingUrl,
-                        isLocal: false,
-                        source: 's3-streaming'
-                      };
-                    } catch (error) {
-                      console.warn('⚠️ [ContentContext] 보안 URL 생성 실패:', file.name, error);
-                    }
-                  }
-                  
-                  // S3에서 같은 이름의 파일 찾기 (안전한 방식)
-                  const s3File = s3Files.find(s3f => {
-                    if (!s3f || !s3f.name) return false;
-                    if (s3f.name === file.name) return true;
-                    if (s3f.key && typeof s3f.key === 'string' && s3f.key.includes(file.name)) return true;
-                    return false;
-                  });
-                  
-                  if (s3File) {
-                    console.log('☁️ [ContentContext] S3 파일 매칭 성공:', file.name, '→', s3File.url);
-                    return {
-                      ...file,
-                      url: s3File.url,
-                      s3Key: s3File.key,
-                      isLocal: false,
-                      source: 's3'
-                    };
-                  }
-                  
-                  // S3에서 찾지 못한 경우 로컬 파일 유지 (하지만 경고 표시)
-                  console.log('📁 [ContentContext] 로컬 파일 유지 (S3 마이그레이션 권장):', file.name);
-                  return {
-                    ...file,
-                    isLocal: true,
-                    source: 'local',
-                    migrationNeeded: true
-                  };
-                })
-              );
-              
-              return { ...content, files: updatedFiles };
-            }
-            return content;
-          })
-        );
+        const contentsWithUrls = dynamoContents.map(content => {
+          if (content.files && content.files.length > 0) {
+            const updatedFiles = content.files.map(file => {
+              // S3 키가 있으면 백엔드 스트리밍 URL 사용
+              if (file.s3Key) {
+                const backendUrl = process.env.REACT_APP_BACKEND_API_URL || 'http://localhost:3001';
+                file.url = `${backendUrl}/api/s3/file/${encodeURIComponent(file.s3Key)}`;
+                console.log(`🔗 [ContentContext] 백엔드 스트리밍 URL 생성: ${file.name} -> ${file.url}`);
+              }
+              return file;
+            });
+            return { ...content, files: updatedFiles };
+          }
+          return content;
+        });
         
-        const sortedContents = contentsWithS3URLs.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setContents(sortedContents);
-        console.log(`✅ DynamoDB에서 ${dynamoContents.length}개 콘텐츠 로드 완료 (S3 파일 매칭 포함)`);
+        setContents(contentsWithUrls);
+        console.log(`✅ DynamoDB에서 ${contentsWithUrls.length}개 콘텐츠 로드 완료`);
+        
+        // localStorage에 백업 저장
+        localStorage.setItem('demo-factory-contents', JSON.stringify(contentsWithUrls));
+        console.log('💾 localStorage에 백업 저장 완료');
+        
       } else {
-        console.log('📭 DynamoDB에 콘텐츠가 없습니다. localStorage에서 마이그레이션을 시도합니다.');
+        console.log('📭 DynamoDB에 콘텐츠가 없음, localStorage에서 로드 시도...');
         await loadFromLocalStorageAndMigrate();
       }
       
     } catch (error) {
       console.error('❌ DynamoDB 로드 실패:', error);
-      console.log('🔄 localStorage 폴백 시도...');
+      console.log('🔄 localStorage 백업에서 로드 시도...');
       await loadFromLocalStorageAndMigrate();
     } finally {
       setLoading(false);
     }
-  }, []); // useCallback 의존성 배열
+  }, []); // 빈 의존성 배열로 설정
 
-  // Load content from DynamoDB on mount
-  useEffect(() => {
-    loadContentsFromDynamoDB();
-    
-    // 백그라운드 URL 갱신 스케줄러 (1시간마다)
-    const urlRefreshInterval = setInterval(() => {
-      console.log('🔄 [ContentContext] 백그라운드 URL 갱신 시작...');
-      urlManager.refreshExpiringSoonUrls();
-      urlManager.cleanupExpiredUrls();
-      
-      // 캐시 상태 로그
-      const cacheStatus = urlManager.getCacheStatus();
-      console.log('📊 [ContentContext] URL 캐시 상태:', cacheStatus);
-    }, 60 * 60 * 1000); // 1시간마다
-    
-    return () => {
-      clearInterval(urlRefreshInterval);
-    };
-  }, [loadContentsFromDynamoDB]);
-
-  // localStorage에서 로드하고 DynamoDB로 마이그레이션
+  // localStorage에서 데이터 로드 및 DynamoDB로 마이그레이션
   const loadFromLocalStorageAndMigrate = async () => {
     try {
-      const localContents = localStorage.getItem('demo-factory-contents');
-      if (localContents) {
-        const parsedContents = JSON.parse(localContents);
-        const sortedContents = parsedContents.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setContents(sortedContents);
-        console.log(`📦 localStorage에서 ${parsedContents.length}개 콘텐츠 로드 완료`);
+      const savedContents = localStorage.getItem('demo-factory-contents');
+      if (savedContents) {
+        const parsedContents = JSON.parse(savedContents);
+        setContents(parsedContents);
+        console.log(`📱 localStorage에서 ${parsedContents.length}개 콘텐츠 로드`);
         
-        // localStorage 데이터를 DynamoDB로 자동 마이그레이션
-        console.log('🚀 localStorage → DynamoDB 자동 마이그레이션 시작...');
-        await migrateLocalStorageToDynamoDB(parsedContents);
+        // DynamoDB로 마이그레이션 시도 (백그라운드에서)
+        try {
+          for (const content of parsedContents) {
+            await saveContentToBackend(content);
+          }
+          console.log('🔄 localStorage → DynamoDB 마이그레이션 완료');
+        } catch (migrationError) {
+          console.warn('⚠️ DynamoDB 마이그레이션 실패:', migrationError);
+        }
       } else {
-        console.log('📭 localStorage에도 콘텐츠가 없습니다. 빈 상태로 시작합니다.');
+        console.log('📭 저장된 콘텐츠가 없습니다.');
         setContents([]);
       }
     } catch (error) {
       console.error('❌ localStorage 로드 실패:', error);
       setContents([]);
-      setError('데이터 로드에 실패했습니다.');
     }
   };
 
-  // localStorage → DynamoDB 마이그레이션
-  const migrateLocalStorageToDynamoDB = async (localContents) => {
-    try {
-      for (const content of localContents) {
-        await saveContentToBackend(content);
-        console.log(`✅ 마이그레이션 완료: ${content.title}`);
-      }
-      console.log('🎉 모든 콘텐츠 DynamoDB 마이그레이션 완료!');
-    } catch (error) {
-      console.error('❌ 마이그레이션 실패:', error);
-    }
-  };
+  // 컴포넌트 마운트 시 데이터 로드
+  useEffect(() => {
+    loadContentsFromDynamoDB();
+  }, [loadContentsFromDynamoDB]); // loadContentsFromDynamoDB를 의존성에 추가
 
-  // Add new content with secure file upload
-  const addContent = async (contentData, files = []) => {
+  // Add new content
+  const addContent = async (newContent) => {
     try {
       setLoading(true);
       setError(null);
-
-      console.log('🔒 [ContentContext] 보안 콘텐츠 업로드 시작:', contentData.title);
-
-      // 콘텐츠 ID 미리 생성 (파일 업로드에 사용)
-      const contentId = `content-${Date.now()}`;
-      let uploadedFiles = [];
-      
-      // 파일이 File 객체인지 메타데이터인지 확인
-      if (files && files.length > 0) {
-        const firstFile = files[0];
-        
-        if (firstFile instanceof File) {
-          // File 객체들 - 새로 업로드 필요
-          console.log(`📁 [ContentContext] ${files.length}개 파일 보안 업로드 시작`);
-          
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const fileId = `file-${Date.now()}-${i}`;
-            
-            setUploadProgress(prev => ({
-              ...prev,
-              [fileId]: { name: file.name, progress: 0 }
-            }));
-
-            try {
-              // 보안 S3 업로드 사용
-              // 백엔드를 통한 안전한 파일 업로드
-              const backendUploadService = await import('../services/backendUploadService');
-              const uploadResult = await backendUploadService.uploadFile(
-                file, 
-                (progress) => {
-                  setUploadProgress(prev => ({
-                    ...prev,
-                    [fileId]: { name: file.name, progress }
-                  }));
-                }
-              );
-
-              uploadedFiles.push({
-                ...uploadResult,
-                id: fileId
-              });
-
-              console.log(`✅ [ContentContext] 보안 업로드 완료: ${file.name}`);
-
-              // 업로드 완료 후 진행률 제거
-              setUploadProgress(prev => {
-                const newProgress = { ...prev };
-                delete newProgress[fileId];
-                return newProgress;
-              });
-
-            } catch (uploadError) {
-              console.error(`❌ [ContentContext] 파일 업로드 실패 (${file.name}):`, uploadError);
-              setUploadProgress(prev => {
-                const newProgress = { ...prev };
-                delete newProgress[fileId];
-                return newProgress;
-              });
-              throw new Error(`파일 업로드 실패: ${file.name} - ${uploadError.message}`);
-            }
-          }
-        } else {
-          // 이미 업로드된 파일 메타데이터 - 그대로 사용
-          console.log(`📁 [ContentContext] ${files.length}개 이미 업로드된 파일 사용`);
-          uploadedFiles = files.map((file, i) => ({
-            ...file,
-            id: file.id || `file-${Date.now()}-${i}`,
-            contentId: contentId // 새 콘텐츠 ID로 업데이트
-          }));
-        }
-      }
-
-      // 콘텐츠 메타데이터 생성
-      const newContent = {
-        ...contentData,
-        id: contentId,
-        files: uploadedFiles,
-        views: 0,
-        likes: 0,
-        likedBy: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isSecure: uploadedFiles.some(file => file.isSecure) // 보안 파일이 있으면 보안 콘텐츠로 표시
-      };
 
       // 백엔드를 통해 DynamoDB에 저장
       const savedContent = await saveContentToBackend(newContent);
       
       // 로컬 상태 업데이트
-      setContents(prevContents => {
-        const newContents = [savedContent, ...prevContents];
-        return newContents.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      });
-
-      // localStorage에도 백업 저장
+      setContents(prevContents => [savedContent, ...prevContents]);
+      
+      // localStorage 백업 업데이트
       const updatedContents = [savedContent, ...contents];
       localStorage.setItem('demo-factory-contents', JSON.stringify(updatedContents));
-
-      console.log(`✅ [ContentContext] 보안 콘텐츠 저장 완료: ${savedContent.title}`);
+      
+      console.log('✅ 콘텐츠 추가 완료:', savedContent.title);
       return savedContent;
-
+      
     } catch (error) {
-      console.error('❌ [ContentContext] 콘텐츠 추가 실패:', error);
-      setError(`콘텐츠 추가 실패: ${error.message}`);
+      console.error('❌ 콘텐츠 추가 실패:', error);
+      setError(error.message);
       throw error;
     } finally {
       setLoading(false);
@@ -349,38 +155,38 @@ export const ContentProvider = ({ children }) => {
       // 기존 콘텐츠 찾기
       const existingContent = contents.find(content => content.id === id);
       if (!existingContent) {
-        throw new Error('업데이트할 콘텐츠를 찾을 수 없습니다');
+        throw new Error('콘텐츠를 찾을 수 없습니다.');
       }
-      
-      // 백엔드를 통한 업데이트
-      try {
-        const updatedContent = await saveContentToBackend({ ...existingContent, ...updatedData, updatedAt: new Date().toISOString() });
-        console.log('✅ DynamoDB에 콘텐츠 업데이트 성공:', id);
-      } catch (backendError) {
-        console.warn('⚠️ DynamoDB 업데이트 실패, 로컬만 업데이트:', backendError.message);
-      }
-      
-      const updatedContent = { ...existingContent, ...updatedData, updatedAt: new Date().toISOString() };
+
+      // 업데이트된 콘텐츠 생성
+      const updatedContent = {
+        ...existingContent,
+        ...updatedData,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 백엔드를 통해 DynamoDB에 저장
+      const savedContent = await saveContentToBackend(updatedContent);
       
       // 로컬 상태 업데이트
       setContents(prevContents => 
         prevContents.map(content => 
-          content.id === id ? updatedContent : content
+          content.id === id ? savedContent : content
         )
       );
-
+      
       // localStorage 백업 업데이트
       const updatedContents = contents.map(content => 
-        content.id === id ? updatedContent : content
+        content.id === id ? savedContent : content
       );
       localStorage.setItem('demo-factory-contents', JSON.stringify(updatedContents));
-
-      console.log(`✅ 콘텐츠 업데이트 완료: ${id}`);
-      return updatedContent;
-
+      
+      console.log('✅ 콘텐츠 업데이트 완료:', savedContent.title);
+      return savedContent;
+      
     } catch (error) {
-      console.error('콘텐츠 업데이트 실패:', error);
-      setError(`콘텐츠 업데이트 실패: ${error.message}`);
+      console.error('❌ 콘텐츠 업데이트 실패:', error);
+      setError(error.message);
       throw error;
     } finally {
       setLoading(false);
@@ -428,95 +234,48 @@ export const ContentProvider = ({ children }) => {
 
       console.log(`✅ [ContentContext] 보안 콘텐츠 삭제 완료: ${id}`);
       console.log('🎉 [ContentContext] 삭제 프로세스 완전 완료!');
-      return true;
 
     } catch (error) {
-      console.error('❌ [ContentContext] 콘텐츠 삭제 실패:', error);
-      setError(`콘텐츠 삭제 실패: ${error.message}`);
+      console.error('❌ 콘텐츠 삭제 실패:', error);
+      setError(error.message);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  // Get secure file URL (백엔드 스트리밍 사용)
-  const getSecureFileUrl = async (file, expiresIn = 86400) => {
-    try {
-      if (!file.s3Key) {
-        console.warn('⚠️ [ContentContext] S3 키가 없는 파일:', file.name);
-        return file.url || null;
-      }
-
-      // 백엔드 스트리밍 URL 생성 (환경별 동적 URL)
-      const encodedS3Key = encodeURIComponent(file.s3Key);
-      // 안전한 백엔드 URL 생성
-      let backendBaseUrl;
-      const envUrl = process.env.REACT_APP_BACKEND_API_URL;
-      
-      // 배포 환경에서 환경 변수 문제 해결을 위해 강제로 현재 도메인 사용
-      console.log('🔍 [ContentContext] 환경 변수 확인 (함수):', envUrl);
-      
-      // 환경 변수가 유효한지 확인 (더 엄격한 검증)
-      const isValidEnvUrl = envUrl && 
-                           typeof envUrl === 'string' && 
-                           envUrl.trim().length > 10 && 
-                           envUrl !== 'undefined' && 
-                           envUrl !== 'null' && 
-                           envUrl !== 'https://' && 
-                           envUrl !== 'http://' &&
-                           (envUrl.startsWith('https://') || envUrl.startsWith('http://'));
-      
-      if (isValidEnvUrl) {
-        backendBaseUrl = envUrl.trim();
-        console.log('✅ [ContentContext] 환경 변수 사용 (함수):', backendBaseUrl);
-      } else {
-        console.log('⚠️ [ContentContext] 환경 변수 무효, 동적 생성 사용 (함수):', envUrl);
-        // 현재 도메인 기반 동적 생성 (포트 포함)
-        if (typeof window !== 'undefined') {
-          const protocol = window.location.protocol;
-          const host = window.location.host; // hostname + port 포함
-          backendBaseUrl = `${protocol}//${host}`;
-        } else {
-          backendBaseUrl = 'http://localhost:3001';
-        }
-      }
-      const streamingUrl = `${backendBaseUrl}/api/s3/file/${encodedS3Key}`;
-      
-      console.log('🔗 [ContentContext] 백엔드 스트리밍 URL 생성 완료:', file.name);
-      return streamingUrl;
-    } catch (error) {
-      console.error('❌ [ContentContext] URL 생성 실패:', error);
-      return null;
+  // Get content by ID (with fallback to backend API)
+  const getContentById = async (id) => {
+    // 먼저 로컬 contents에서 찾기
+    const localContent = contents.find(content => content.id === id);
+    if (localContent) {
+      console.log('✅ [ContentContext] 로컬에서 콘텐츠 발견:', localContent.title);
+      return localContent;
     }
-  };
-
-  // Force refresh URLs for content (URL 만료 시 사용)
-  const refreshContentUrls = async (contentId) => {
+    
+    // 로컬에 없으면 백엔드에서 직접 조회
+    console.log('🔍 [ContentContext] 로컬에 없음, 백엔드에서 조회:', id);
     try {
-      console.log('🔄 [ContentContext] 콘텐츠 URL 강제 새로고침:', contentId);
-      
-      const content = contents.find(c => c.id === contentId);
-      if (!content || !content.files) {
-        console.warn('⚠️ [ContentContext] 콘텐츠 또는 파일을 찾을 수 없음:', contentId);
-        return;
+      const { getContentById: getContentFromBackend } = await import('../services/backendContentService');
+      const backendContent = await getContentFromBackend(id);
+      if (backendContent) {
+        console.log('✅ [ContentContext] 백엔드에서 콘텐츠 발견:', backendContent.title);
+        // 로컬 contents에도 추가
+        setContents(prevContents => {
+          const exists = prevContents.find(c => c.id === id);
+          if (!exists) {
+            return [...prevContents, backendContent];
+          }
+          return prevContents;
+        });
+        return backendContent;
       }
-      
-      // 모든 파일의 URL 강제 새로고침
-      const refreshPromises = content.files
-        .filter(file => file.s3Key)
-        .map(file => urlManager.getSmartUrl(file.s3Key, true)); // forceRefresh = true
-      
-      await Promise.all(refreshPromises);
-      console.log(`✅ [ContentContext] ${refreshPromises.length}개 URL 새로고침 완료`);
-      
     } catch (error) {
-      console.error('❌ [ContentContext] URL 새로고침 실패:', error);
+      console.error('❌ [ContentContext] 백엔드 조회 실패:', error);
     }
-  };
-
-  // Get content by ID
-  const getContentById = (id) => {
-    return contents.find(content => content.id === id);
+    
+    console.warn('❌ [ContentContext] 콘텐츠를 찾을 수 없음:', id);
+    return null;
   };
 
   // Get contents by category
@@ -529,43 +288,34 @@ export const ContentProvider = ({ children }) => {
     if (!query.trim()) return contents;
     
     const lowercaseQuery = query.toLowerCase();
-    return contents.filter(content =>
+    return contents.filter(content => 
       content.title.toLowerCase().includes(lowercaseQuery) ||
-      content.description.toLowerCase().includes(lowercaseQuery) ||
-      content.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
-      content.category.toLowerCase().includes(lowercaseQuery)
+      content.content.toLowerCase().includes(lowercaseQuery) ||
+      content.description?.toLowerCase().includes(lowercaseQuery) ||
+      content.tags?.some(tag => tag.toLowerCase().includes(lowercaseQuery)) ||
+      content.author.toLowerCase().includes(lowercaseQuery)
     );
   };
 
   // Get all contents
-  const getAllContents = () => contents;
-
-  // Get latest contents
-  const getLatestContents = (limit = 5) => {
-    return contents.slice(0, limit);
+  const getAllContents = () => {
+    return contents;
   };
 
-  // Increment views (세션당 한 번만)
+  // Get latest contents
+  const getLatestContents = (limit = 10) => {
+    return contents
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, limit);
+  };
+
+  // Increment views
   const incrementViews = async (id) => {
     try {
-      // 세션 스토리지에서 이미 조회한 콘텐츠인지 확인
-      const viewedContents = JSON.parse(sessionStorage.getItem('viewedContents') || '[]');
-      
-      if (viewedContents.includes(id)) {
-        console.log('🚫 [ContentContext] 이미 이 세션에서 조회한 콘텐츠:', id);
-        return;
-      }
-      
       const content = contents.find(c => c.id === id);
       if (content) {
         const updatedViews = (content.views || 0) + 1;
         await updateContent(id, { views: updatedViews });
-        
-        // 세션 스토리지에 조회 기록 저장
-        viewedContents.push(id);
-        sessionStorage.setItem('viewedContents', JSON.stringify(viewedContents));
-        
-        console.log('✅ [ContentContext] 조회수 증가 완료:', id, '→', updatedViews);
       }
     } catch (error) {
       console.error('조회수 증가 실패:', error);
@@ -598,6 +348,82 @@ export const ContentProvider = ({ children }) => {
   const isLikedByUser = (id, userId) => {
     const content = contents.find(c => c.id === id);
     return content ? (content.likedBy || []).includes(userId) : false;
+  };
+
+  // 보안 파일 URL 생성 (백엔드를 통해)
+  const getSecureFileUrl = async (file, expiresIn = 3600) => {
+    try {
+      console.log('🔍 [ContentContext] 환경 변수 확인 (함수):', {
+        REACT_APP_BACKEND_API_URL: process.env.REACT_APP_BACKEND_API_URL,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      
+      // 환경 변수가 없거나 유효하지 않으면 동적 생성
+      let backendUrl = process.env.REACT_APP_BACKEND_API_URL;
+      if (!backendUrl || backendUrl === 'undefined') {
+        console.log('⚠️ [ContentContext] 환경 변수 무효, 동적 생성 사용 (함수):', backendUrl);
+        
+        if (window.location.hostname === 'localhost') {
+          backendUrl = 'http://localhost:3001';
+        } else {
+          backendUrl = `${window.location.protocol}//${window.location.hostname}`;
+        }
+      }
+      
+      // S3 키가 있으면 백엔드 스트리밍 URL 생성
+      if (file.s3Key) {
+        const streamingUrl = `${backendUrl}/api/s3/file/${encodeURIComponent(file.s3Key)}`;
+        console.log('🔗 [ContentContext] 백엔드 스트리밍 URL 생성 완료:', file.name);
+        return streamingUrl;
+      }
+      
+      // 기존 URL이 있으면 그대로 반환
+      if (file.url) {
+        return file.url;
+      }
+      
+      console.warn('⚠️ [ContentContext] 파일 URL 생성 불가:', file.name);
+      return null;
+      
+    } catch (error) {
+      console.error('❌ [ContentContext] 보안 URL 생성 실패:', error);
+      return file.url || null;
+    }
+  };
+
+  // 콘텐츠 URL 새로고침
+  const refreshContentUrls = async () => {
+    try {
+      console.log('🔄 [ContentContext] 콘텐츠 URL 새로고침 시작...');
+      
+      const updatedContents = await Promise.all(
+        contents.map(async (content) => {
+          if (content.files && content.files.length > 0) {
+            const updatedFiles = await Promise.all(
+              content.files.map(async (file) => {
+                try {
+                  const newUrl = await getSecureFileUrl(file);
+                  return { ...file, url: newUrl };
+                } catch (error) {
+                  console.warn(`⚠️ [ContentContext] 파일 URL 새로고침 실패: ${file.name}`, error);
+                  return file;
+                }
+              })
+            );
+            return { ...content, files: updatedFiles };
+          }
+          return content;
+        })
+      );
+      
+      setContents(updatedContents);
+      localStorage.setItem('demo-factory-contents', JSON.stringify(updatedContents));
+      
+      console.log('✅ [ContentContext] 콘텐츠 URL 새로고침 완료');
+      
+    } catch (error) {
+      console.error('❌ [ContentContext] URL 새로고침 실패:', error);
+    }
   };
 
   // Context value
