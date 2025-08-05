@@ -666,6 +666,55 @@ app.get('/api/content/list', async (req, res) => {
   }
 });
 
+// DynamoDB에서 개별 콘텐츠 조회 엔드포인트
+app.get('/api/content/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🔍 [백엔드] 개별 콘텐츠 조회 시작:', id);
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
+    const params = {
+      TableName: process.env.REACT_APP_DYNAMODB_TABLE || 'DemoFactoryContents',
+      Key: {
+        id: id
+      }
+    };
+    
+    const result = await dynamodb.get(params).promise();
+    
+    if (result.Item) {
+      console.log('✅ [백엔드] 개별 콘텐츠 조회 성공:', result.Item.title);
+      res.json({
+        success: true,
+        content: result.Item
+      });
+    } else {
+      console.log('❌ [백엔드] 콘텐츠를 찾을 수 없음:', id);
+      res.status(404).json({
+        success: false,
+        error: '콘텐츠를 찾을 수 없습니다.'
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ [백엔드] 개별 콘텐츠 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // DynamoDB에서 콘텐츠 삭제 엔드포인트
 app.delete('/api/content/:id', async (req, res) => {
   try {

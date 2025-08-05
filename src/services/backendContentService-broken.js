@@ -158,35 +158,43 @@ export const deleteContent = async (id) => {
     }
 };
 
-// 개별 콘텐츠 조회 함수
-export const getContentById = async (id) => {
-    try {
-        console.log('🔍 [BackendContent] 개별 콘텐츠 조회 시작:', id);
-        
-        const response = await fetch(`${BACKEND_API_URL}/api/content/${id}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
+// default export
+export default backendContentService;
+    // 백엔드를 통한 개별 콘텐츠 조회
+    async getContentById(id) {
+        try {
+            console.log('🔍 [BackendContent] 개별 콘텐츠 조회 시작:', id);
+            
+            const response = await fetch(`${BACKEND_API_URL}/api/content/list`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                const content = data.contents.find(c => c.id === id);
+                if (content) {
+                    console.log('✅ [BackendContent] 개별 콘텐츠 조회 성공:', content.title);
+                    return content;
+                } else {
+                    console.log('❌ [BackendContent] 콘텐츠를 찾을 수 없음:', id);
+                    return null;
+                }
+            } else {
+                throw new Error(data.error || '콘텐츠 조회 실패');
             }
-        });
-        
-        if (!response.ok) {
-            console.error('❌ [BackendContent] 개별 콘텐츠 조회 HTTP 오류:', response.status, response.statusText);
-            return null;
+            
+        } catch (error) {
+            console.error('❌ [BackendContent] 개별 콘텐츠 조회 실패:', error);
+            throw error;
         }
-        
-        const data = await response.json();
-        
-        if (data.success && data.content) {
-            console.log('✅ [BackendContent] 개별 콘텐츠 조회 성공:', data.content.title);
-            return data.content;
-        } else {
-            console.log('❌ [BackendContent] 콘텐츠를 찾을 수 없음:', id);
-            return null;
-        }
-    } catch (error) {
-        console.error('❌ [BackendContent] 개별 콘텐츠 조회 실패:', error);
-        throw error;
     }
-};
 
+// 개별 콘텐츠 조회 함수 export
+export const getContentById = async (id) => {
+    const service = new BackendContentService();
+    return await service.getContentById(id);
+};

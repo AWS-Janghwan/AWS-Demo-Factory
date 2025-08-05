@@ -34,7 +34,9 @@ import { getLocalFiles } from '../utils/amplifyConfig';
 import SimpleMarkdownRenderer from '../components/SimpleMarkdownRenderer';
 
 const ContentDetailPage = () => {
+  console.log("🚀 [ContentDetailPage] 컴포넌트 시작!");
   const { id } = useParams();
+  console.log("🔍 [ContentDetailPage] URL 파라미터 ID:", id);
   const navigate = useNavigate();
   const { getContentById, deleteContent, incrementViews, toggleLike, isLikedByUser, getSecureFileUrl, loading: contextLoading } = useContent();
   const { trackPageView } = useAnalytics();
