@@ -18,9 +18,12 @@ const BEDROCK_API_BASE_URL = (() => {
  * @param {Object} data - 전송할 데이터
  * @returns {Promise<Object>} - API 응답
  */
-const callBedrockAPI = async (endpoint, data) => {
+const callBedrockAPI = async (endpoint, data, retryCount = 0) => {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = [2000, 5000, 10000]; // 2초, 5초, 10초
+  
   try {
-    console.log(`🤖 Bedrock API 호출: ${endpoint}`);
+    console.log(`🤖 Bedrock API 호출: ${endpoint}${retryCount > 0 ? ` (재시도 ${retryCount}/${MAX_RETRIES})` : ''}`);
     
     const response = await fetch(`${BEDROCK_API_BASE_URL}${endpoint}`, {
       method: 'POST',
@@ -32,7 +35,21 @@ const callBedrockAPI = async (endpoint, data) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      const errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
+      
+      // Rate Limit 오류 시 재시도
+      if ((response.status === 429 || response.status === 500) && 
+          (errorMessage.includes('요청이 너무 많습니다') || errorMessage.includes('rate limit')) &&
+          retryCount < MAX_RETRIES) {
+        
+        const delay = RETRY_DELAY[retryCount];
+        console.log(`⏳ Rate Limit 감지, ${delay/1000}초 후 재시도...`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return callBedrockAPI(endpoint, data, retryCount + 1);
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -80,7 +97,7 @@ export const generateAnalyticsInsights = async (analyticsData) => {
     console.log('🔍 분석 데이터 AI 처리 시작...');
     
     const insights = await callBedrockAPI('/analytics-insights', {
-      analyticsData
+      analyticsData: analyticsData
     });
     
     return insights;
@@ -96,18 +113,8 @@ export const generateAnalyticsInsights = async (analyticsData) => {
  * @returns {Promise<string>} - AI가 생성한 콘텐츠 분석
  */
 export const generateContentAnalysis = async (contentAnalytics) => {
-  try {
-    console.log('📄 콘텐츠 분석 AI 처리 시작...');
-    
-    const analysis = await callBedrockAPI('/content-analysis', {
-      contentAnalytics
-    });
-    
-    return analysis;
-  } catch (error) {
-    console.error('❌ 콘텐츠 분석 생성 실패:', error);
-    throw error;
-  }
+  console.log('⚠️ generateContentAnalysis 호출 차단 - Rate Limit 방지');
+  throw new Error('콘텐츠 분석은 통합 AI 인사이트에 포함되어 있습니다.');
 };
 
 /**
@@ -116,18 +123,8 @@ export const generateContentAnalysis = async (contentAnalytics) => {
  * @returns {Promise<string>} - AI가 생성한 작성자 분석
  */
 export const generateAuthorAnalysis = async (authorAnalytics) => {
-  try {
-    console.log('✍️ 작성자 분석 AI 처리 시작...');
-    
-    const analysis = await callBedrockAPI('/author-analysis', {
-      authorAnalytics
-    });
-    
-    return analysis;
-  } catch (error) {
-    console.error('❌ 작성자 분석 생성 실패:', error);
-    throw error;
-  }
+  console.log('⚠️ generateAuthorAnalysis 호출 차단 - Rate Limit 방지');
+  throw new Error('작성자 분석은 통합 AI 인사이트에 포함되어 있습니다.');
 };
 
 // 레거시 함수 (호환성 유지)

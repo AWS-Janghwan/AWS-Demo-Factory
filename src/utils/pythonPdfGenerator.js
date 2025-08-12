@@ -5,6 +5,10 @@ const PYTHON_PDF_API_BASE_URL = (() => {
   if (pdfUrl) {
     return pdfUrl;
   }
+  // 로컬 환경 감지
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:5002';
+  }
   // 배포 환경에서는 상대 경로 사용 (프록시 통해)
   if (typeof window !== 'undefined') {
     return window.location.origin;

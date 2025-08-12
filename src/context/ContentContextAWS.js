@@ -168,12 +168,19 @@ export const ContentProvider = ({ children }) => {
       // 백엔드를 통해 DynamoDB에 저장
       const savedContent = await saveContentToBackend(updatedContent);
       
-      // 로컬 상태 업데이트
+      // 로컬 상태 업데이트 (실시간 반영)
       setContents(prevContents => 
         prevContents.map(content => 
           content.id === id ? savedContent : content
         )
       );
+      
+      console.log('🔄 [ContentContext] 로컬 상태 업데이트 완료:', {
+        contentId: id,
+        title: savedContent.title,
+        views: savedContent.views,
+        likes: savedContent.likes
+      });
       
       // localStorage 백업 업데이트
       const updatedContents = contents.map(content => 
@@ -309,38 +316,107 @@ export const ContentProvider = ({ children }) => {
       .slice(0, limit);
   };
 
-  // Increment views
+  // Increment views (세션별 중복 방지)
   const incrementViews = async (id) => {
     try {
+      // 세션별 조회 기록 확인
+      const sessionKey = `viewed_${id}`;
+      const alreadyViewed = sessionStorage.getItem(sessionKey);
+      
+      if (alreadyViewed) {
+        console.log('🔍 [ContentContext] 이미 이번 세션에서 조회한 콘텐츠:', id);
+        return;
+      }
+      
       const content = contents.find(c => c.id === id);
       if (content) {
         const updatedViews = (content.views || 0) + 1;
+        console.log('📈 [ContentContext] 조회수 증가:', content.title, `${content.views || 0} → ${updatedViews}`);
+        
+        // DynamoDB 업데이트
         await updateContent(id, { views: updatedViews });
+        
+        // 세션에 조회 기록 저장
+        sessionStorage.setItem(sessionKey, 'true');
+        
+        // Analytics 서비스로 콘텐츠 조회 추적
+        try {
+          const analyticsService = (await import('../services/analyticsService')).default;
+          await analyticsService.trackContentView(id, content.title, {
+            category: content.category,
+            author: content.author
+          });
+          console.log('📊 [ContentContext] Analytics 콘텐츠 조회 추적 완료');
+        } catch (analyticsError) {
+          console.warn('⚠️ [ContentContext] Analytics 추적 실패:', analyticsError.message);
+        }
       }
     } catch (error) {
-      console.error('조회수 증가 실패:', error);
+      console.error('❌ [ContentContext] 조회수 증가 실패:', error);
     }
   };
 
-  // Toggle like
+  // Toggle like (실시간 상태 업데이트)
   const toggleLike = async (id, userId) => {
     try {
       const content = contents.find(c => c.id === id);
-      if (content) {
-        const likedBy = content.likedBy || [];
-        const isLiked = likedBy.includes(userId);
-        
-        const updatedLikedBy = isLiked 
-          ? likedBy.filter(uid => uid !== userId)
-          : [...likedBy, userId];
-        
+      if (!content) {
+        console.error('❌ [ContentContext] 콘텐츠를 찾을 수 없음:', id);
+        return;
+      }
+      
+      if (!userId) {
+        console.error('❌ [ContentContext] 사용자 ID가 필요합니다');
+        return;
+      }
+      
+      const likedBy = content.likedBy || [];
+      const isLiked = likedBy.includes(userId);
+      
+      const updatedLikedBy = isLiked 
+        ? likedBy.filter(uid => uid !== userId)
+        : [...likedBy, userId];
+      
+      const updatedLikes = updatedLikedBy.length;
+      
+      console.log('❤️ [ContentContext] 좋아요 토글:', {
+        contentTitle: content.title,
+        userId,
+        isLiked,
+        beforeLikes: content.likes || 0,
+        afterLikes: updatedLikes
+      });
+      
+      // 로컬 상태 즉시 업데이트 (UI 반응성)
+      setContents(prevContents => 
+        prevContents.map(c => 
+          c.id === id 
+            ? { ...c, likedBy: updatedLikedBy, likes: updatedLikes }
+            : c
+        )
+      );
+      
+      // DynamoDB 업데이트 (백그라운드)
+      try {
         await updateContent(id, { 
           likedBy: updatedLikedBy,
-          likes: updatedLikedBy.length 
+          likes: updatedLikes 
         });
+        console.log('✅ [ContentContext] 좋아요 DynamoDB 업데이트 완료');
+      } catch (updateError) {
+        console.error('❌ [ContentContext] 좋아요 DynamoDB 업데이트 실패:', updateError);
+        // 실패 시 로컬 상태 롤백
+        setContents(prevContents => 
+          prevContents.map(c => 
+            c.id === id 
+              ? { ...c, likedBy: likedBy, likes: likedBy.length }
+              : c
+          )
+        );
       }
+      
     } catch (error) {
-      console.error('좋아요 토글 실패:', error);
+      console.error('❌ [ContentContext] 좋아요 토글 실패:', error);
     }
   };
 

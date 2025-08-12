@@ -33,7 +33,388 @@ const PDF_CONFIG = {
 };
 
 /**
- * 한글 텍스트를 이미지로 변환하여 PDF에 추가
+ * AI 기반 전체 분석 리포트 생성
+ */
+export const generateAIAnalyticsReport = async (analyticsData, existingInsights = null) => {
+  try {
+    console.log('🤖 AI 기반 분석 리포트 생성 시작...');
+    
+    // 1. AI 인사이트 생성 또는 기존 인사이트 사용
+    let aiInsights;
+    if (existingInsights) {
+      console.log('🔄 기존 AI 인사이트 재사용...');
+      aiInsights = existingInsights;
+    } else {
+      console.log('🔍 AI 인사이트 생성 중...');
+      aiInsights = await generateAnalyticsInsights(analyticsData);
+    }
+    
+    // 2. 추가 분석 생략 (이미 AI 인사이트에 모든 분석 포함됨)
+    console.log('ℹ️ 추가 Bedrock 호출 생략 - AI 인사이트에 이미 포함됨');
+    
+    // 4. PDF 생성
+    console.log('📄 PDF 문서 생성 중...');
+    const doc = new jsPDF(PDF_CONFIG.orientation, PDF_CONFIG.unit, PDF_CONFIG.format);
+    
+    // 헤더 추가
+    let yPos = await addEnglishHeader(doc, 'AWS Demo Factory AI Analytics Report');
+    
+    // Chart.js 동적 로드
+    console.log('📊 Chart.js 로드 중...');
+    const Chart = await loadChartJS();
+    console.log('✅ Chart.js 동적 로드 완룼');
+    
+    // AI 인사이트를 섹션별로 분리
+    const insightSections = extractInsightSections(aiInsights.summary);
+    
+    // 1. 전체 현황 요약 섹션
+    yPos = await addEnglishSectionTitle(doc, '📊 Overall Statistics Analysis', yPos);
+    if (insightSections.overview) {
+      yPos = await addKoreanTextAsImage(doc, insightSections.overview, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 10;
+    }
+    
+    // 전체 통계 차트
+    if (analyticsData.summary) {
+      yPos = await addChartSectionTitle(doc, 'Overall Statistics Chart', '전체 통계 차트', yPos);
+      const summaryChart = await createSummaryChart(analyticsData.summary, Chart);
+      if (summaryChart) {
+        yPos = await addChartToDoc(doc, summaryChart, yPos, '전체 통계');
+      }
+      yPos += 20;
+    }
+    
+    // 2. 접속 목적 분석 섹션
+    yPos = await addEnglishSectionTitle(doc, '🎯 Access Purpose Analysis', yPos);
+    if (insightSections.accessPurpose) {
+      yPos = await addKoreanTextAsImage(doc, insightSections.accessPurpose, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 10;
+    }
+    
+    // 접속 목적 차트
+    if (analyticsData.accessPurpose && analyticsData.accessPurpose.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Access Purpose Chart', '접속 목적 차트', yPos);
+      const purposeChart = await createAccessPurposeChart(analyticsData.accessPurpose, Chart);
+      if (purposeChart) {
+        yPos = await addChartToDoc(doc, purposeChart, yPos, '접속 목적 분석');
+      }
+      yPos += 20;
+    }
+    
+    // 3. 콘텐츠 분석 섹션
+    yPos = await addEnglishSectionTitle(doc, '📄 Content Analysis', yPos);
+    if (insightSections.content) {
+      yPos = await addKoreanTextAsImage(doc, insightSections.content, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 10;
+    }
+    
+    // 콘텐츠 분석 차트
+    if (analyticsData.content && analyticsData.content.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Content Analysis Chart', '콘텐츠 분석 차트', yPos);
+      const contentChart = await createContentChart(analyticsData.content, Chart);
+      if (contentChart) {
+        yPos = await addChartToDoc(doc, contentChart, yPos, '콘텐츠 분석');
+      }
+      yPos += 20;
+    }
+    
+    // 4. 카테고리 분석 섹션
+    yPos = await addEnglishSectionTitle(doc, '📂 Category Analysis', yPos);
+    if (insightSections.category) {
+      yPos = await addKoreanTextAsImage(doc, insightSections.category, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 10;
+    }
+    
+    // 카테고리 분석 차트
+    if (analyticsData.category && analyticsData.category.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Category Analysis Chart', '카테고리 분석 차트', yPos);
+      const categoryChart = await createCategoryChart(analyticsData.category, Chart);
+      if (categoryChart) {
+        yPos = await addChartToDoc(doc, categoryChart, yPos, '카테고리 분석');
+      }
+      yPos += 20;
+    }
+    
+    // 5. 시간별 분석 섹션
+    yPos = await addEnglishSectionTitle(doc, '⏰ Time Analysis', yPos);
+    if (insightSections.time) {
+      yPos = await addKoreanTextAsImage(doc, insightSections.time, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 10;
+    }
+    
+    // 시간별 분석 차트
+    if (analyticsData.time && analyticsData.time.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Time Analysis Chart', '시간별 분석 차트', yPos);
+      const timeChart = await createTimeChart(analyticsData.time, Chart);
+      if (timeChart) {
+        yPos = await addChartToDoc(doc, timeChart, yPos, '시간별 분석');
+      }
+      yPos += 20;
+    }
+    
+    // 6. 전략적 권장사항 섹션
+    if (insightSections.recommendations) {
+      yPos = await addEnglishSectionTitle(doc, '💡 Strategic Recommendations', yPos);
+      yPos = await addKoreanTextAsImage(doc, insightSections.recommendations, 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+    }
+    
+    // 푸터 추가
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on ${new Date().toLocaleString()}`, 20, 280);
+    doc.text('AWS Demo Factory AI Analytics Report', 150, 280);
+    
+    // PDF 저장
+    const fileName = `AWS_Demo_Factory_AI_Report_${new Date().toISOString().slice(0, 19).replace(/:/g, '')}.pdf`;
+    doc.save(fileName);
+    
+    console.log('✅ AI PDF 생성 완료:', fileName);
+    
+    return {
+      success: true,
+      fileName: fileName,
+      message: 'AI 기반 분석 리포트가 성공적으로 생성되었습니다.'
+    };
+    
+  } catch (error) {
+    console.error('❌ AI PDF 리포트 생성 실패:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * 차트만 포함된 분석 리포트 생성 (AI 인사이트 없음)
+ */
+export const generateChartOnlyReport = async (analyticsData, insightsText = null) => {
+  try {
+    console.log('📊 차트 전용 분석 리포트 생성 시작...');
+    
+    // Chart.js 동적 로드
+    const Chart = await loadChartJS();
+    console.log('✅ Chart.js 동적 로드 완료');
+    
+    // PDF 문서 생성
+    const doc = new jsPDF(PDF_CONFIG.orientation, PDF_CONFIG.unit, PDF_CONFIG.format);
+    
+    // 헤더 추가 (영문으로)
+    let yPos = await addEnglishHeader(doc, 'AWS Demo Factory Analytics Report');
+    
+    // AI 인사이트가 있으면 추가 (한글 텍스트는 이미지로 변환)
+    if (insightsText) {
+      yPos = await addEnglishSectionTitle(doc, 'AI Generated Insights', yPos);
+      yPos = await addKoreanTextAsImage(doc, insightsText.substring(0, 500) + '...', 20, yPos, {
+        fontSize: 10,
+        maxWidth: 170
+      });
+      yPos += 20;
+    }
+    
+    // 1. 전체 통계 차트
+    if (analyticsData.summary) {
+      yPos = await addChartSectionTitle(doc, 'Overall Statistics', '전체 통계', yPos);
+      const summaryChart = await createSummaryChart(analyticsData.summary, Chart);
+      if (summaryChart) {
+        yPos = await addChartToDoc(doc, summaryChart, yPos, '전체 통계');
+      }
+      yPos += 10;
+    }
+    
+    // 2. 접속 목적 차트
+    if (analyticsData.accessPurpose && analyticsData.accessPurpose.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Access Purpose Analysis', '접속 목적 분석', yPos);
+      const purposeChart = await createAccessPurposeChart(analyticsData.accessPurpose, Chart);
+      if (purposeChart) {
+        yPos = await addChartToDoc(doc, purposeChart, yPos, '접속 목적 분석');
+      }
+      yPos += 10;
+    }
+    
+    // 3. 콘텐츠 분석 차트
+    if (analyticsData.content && analyticsData.content.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Content Analysis', '콘텐츠 분석', yPos);
+      const contentChart = await createContentChart(analyticsData.content, Chart);
+      if (contentChart) {
+        yPos = await addChartToDoc(doc, contentChart, yPos, '콘텐츠 분석');
+      }
+      yPos += 10;
+    }
+    
+    // 4. 카테고리 분석 차트
+    if (analyticsData.category && analyticsData.category.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Category Analysis', '카테고리 분석', yPos);
+      const categoryChart = await createCategoryChart(analyticsData.category, Chart);
+      if (categoryChart) {
+        yPos = await addChartToDoc(doc, categoryChart, yPos, '카테고리 분석');
+      }
+      yPos += 10;
+    }
+    
+    // 5. 시간별 분석 차트
+    if (analyticsData.time && analyticsData.time.length > 0) {
+      yPos = await addChartSectionTitle(doc, 'Time Analysis', '시간별 분석', yPos);
+      const timeChart = await createTimeChart(analyticsData.time, Chart);
+      if (timeChart) {
+        yPos = await addChartToDoc(doc, timeChart, yPos, '시간별 분석');
+      }
+    }
+    
+    // 푸터 추가
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on ${new Date().toLocaleString()}`, 20, 280);
+    doc.text('AWS Demo Factory Analytics Report', 150, 280);
+    
+    // PDF 저장
+    const fileName = `AWS_Demo_Factory_Chart_Report_${new Date().toISOString().slice(0, 19).replace(/:/g, '')}.pdf`;
+    doc.save(fileName);
+    
+    console.log('✅ 차트 전용 PDF 생성 완료:', fileName);
+    
+    return {
+      success: true,
+      fileName: fileName,
+      message: '차트가 포함된 분석 리포트가 성공적으로 생성되었습니다.'
+    };
+    
+  } catch (error) {
+    console.error('❌ 차트 전용 PDF 생성 실패:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * 영문 헤더 추가
+ */
+const addEnglishHeader = async (doc, title) => {
+  // 배경색 설정
+  doc.setFillColor(35, 47, 62); // AWS Dark Blue
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  // 제목
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.text(title, 20, 25);
+  
+  // 생성 날짜
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 35);
+  
+  return 50;
+};
+
+/**
+ * 영문 섹션 타이틀 추가
+ */
+const addEnglishSectionTitle = async (doc, title, yPos) => {
+  // 페이지 넘김 체크
+  if (yPos > 250) {
+    doc.addPage();
+    yPos = 30;
+  }
+  
+  doc.setTextColor(255, 153, 0); // AWS Orange
+  doc.setFontSize(14);
+  doc.text(title, 20, yPos);
+  
+  return yPos + 15;
+};
+
+/**
+ * Markdown 텍스트를 파싱하여 스타일링 적용
+ */
+const parseMarkdownText = (text) => {
+  // Markdown 요소들을 스타일링과 함께 파싱
+  const lines = text.split('\n');
+  const parsedLines = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      parsedLines.push({ type: 'space', content: '', style: {} });
+      return;
+    }
+    
+    // 헤더 처리
+    if (trimmed.startsWith('# ')) {
+      parsedLines.push({
+        type: 'header1',
+        content: trimmed.substring(2),
+        style: { fontSize: 16, fontWeight: 'bold', color: '#FF9900', marginBottom: 8 }
+      });
+    } else if (trimmed.startsWith('## ')) {
+      parsedLines.push({
+        type: 'header2',
+        content: trimmed.substring(3),
+        style: { fontSize: 14, fontWeight: 'bold', color: '#232F3E', marginBottom: 6 }
+      });
+    } else if (trimmed.startsWith('### ')) {
+      parsedLines.push({
+        type: 'header3',
+        content: trimmed.substring(4),
+        style: { fontSize: 12, fontWeight: 'bold', color: '#333333', marginBottom: 4 }
+      });
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      // 리스트 아이템
+      parsedLines.push({
+        type: 'listItem',
+        content: '• ' + trimmed.substring(2),
+        style: { fontSize: 10, marginLeft: 10, marginBottom: 2 }
+      });
+    } else if (trimmed.match(/^\d+\. /)) {
+      // 숫자 리스트
+      parsedLines.push({
+        type: 'numberedItem',
+        content: trimmed,
+        style: { fontSize: 10, marginLeft: 10, marginBottom: 2 }
+      });
+    } else {
+      // 일반 텍스트
+      let content = trimmed;
+      let style = { fontSize: 10, marginBottom: 3 };
+      
+      // 볼드 처리
+      if (content.includes('**')) {
+        style.fontWeight = 'bold';
+        content = content.replace(/\*\*(.*?)\*\*/g, '$1');
+      }
+      
+      parsedLines.push({
+        type: 'paragraph',
+        content: content,
+        style: style
+      });
+    }
+  });
+  
+  return parsedLines;
+};
+
+/**
+ * 개선된 한글 텍스트를 이미지로 변환하여 PDF에 추가 (Markdown 지원)
  */
 const addKoreanTextAsImage = async (doc, text, x, y, options = {}) => {
   const {
@@ -44,31 +425,48 @@ const addKoreanTextAsImage = async (doc, text, x, y, options = {}) => {
     lineHeight = 1.5
   } = options;
 
+  console.log(`🇰🇷 한글 텍스트 이미지 변환 시작:`, {
+    text: text.substring(0, 50) + '...',
+    fontSize,
+    maxWidth,
+    position: { x, y }
+  });
+
   try {
-    // 임시 캔버스 생성
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    // Markdown 파싱
+    const parsedLines = parseMarkdownText(text);
+    console.log(`📋 Markdown 파싱 완료: ${parsedLines.length}줄`);
     
-    // 폰트 설정
-    ctx.font = `${fontWeight} ${fontSize}px 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', Arial, sans-serif`;
-    ctx.fillStyle = color;
-    ctx.textBaseline = 'top';
+    // 한글이 포함되어 있는지 확인
+    const hasKorean = /[가-힣]/.test(text);
+    if (!hasKorean) {
+      console.log('ℹ️ 한글이 없어서 기본 텍스트로 처리');
+      doc.setTextColor(parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16));
+      doc.setFontSize(fontSize);
+      doc.text(text, x, y);
+      return y + fontSize + 5;
+    }
     
-    // 텍스트 줄바꿈 처리
+    // 텍스트를 줄 단위로 분할 (더 지능적으로)
     const lines = [];
-    const words = text.split(' ');
+    const words = text.split(/\s+/);
     let currentLine = '';
+    
+    // 임시 캔버스로 텍스트 크기 측정
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.font = `${fontWeight} ${fontSize}px 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif`;
     
     for (const word of words) {
       const testLine = currentLine + (currentLine ? ' ' : '') + word;
-      const metrics = ctx.measureText(testLine);
+      const metrics = tempCtx.measureText(testLine);
       
-      if (metrics.width > maxWidth * 3.78) { // mm to px 변환 (대략)
+      if (metrics.width > maxWidth * 2.83) { // mm to px 변환 (1mm = 2.83px)
         if (currentLine) {
           lines.push(currentLine);
           currentLine = word;
         } else {
-          lines.push(word);
+          lines.push(word); // 단어가 너무 길어도 강제로 추가
         }
       } else {
         currentLine = testLine;
@@ -78,393 +476,422 @@ const addKoreanTextAsImage = async (doc, text, x, y, options = {}) => {
       lines.push(currentLine);
     }
     
-    // 캔버스 크기 설정
-    const totalHeight = lines.length * fontSize * lineHeight;
-    canvas.width = maxWidth * 3.78;
-    canvas.height = totalHeight + 20;
+    console.log(`📏 텍스트 줄 분할 완료: ${lines.length}줄`);
     
-    // 배경색 설정 (투명)
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let currentY = y;
     
-    // 폰트 재설정 (캔버스 크기 변경 후)
-    ctx.font = `${fontWeight} ${fontSize}px 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', Arial, sans-serif`;
-    ctx.fillStyle = color;
-    ctx.textBaseline = 'top';
-    
-    // 텍스트 그리기
-    lines.forEach((line, index) => {
-      ctx.fillText(line, 0, index * fontSize * lineHeight);
-    });
-    
-    // 캔버스를 이미지로 변환하여 PDF에 추가
-    const imageData = canvas.toDataURL('image/png');
-    doc.addImage(imageData, 'PNG', x, y, maxWidth, totalHeight / 3.78);
-    
-    return y + (totalHeight / 3.78) + 5;
-  } catch (error) {
-    console.error('한글 텍스트 이미지 변환 실패:', error);
-    // 폴백: 영어로 변환하여 추가
-    return addTextBlock(doc, translateToEnglish(text), y, maxWidth);
-  }
-};
-
-/**
- * 한글을 영어로 변환 (개선된 번역)
- */
-const translateToEnglish = (koreanText) => {
-  const translations = {
-    // 섹션 제목
-    '전체 현황 요약': 'Overall Status Summary',
-    '핵심 인사이트': 'Key Insights',
-    '성과 분석': 'Performance Analysis',
-    '권장사항': 'Recommendations',
-    '다음 단계': 'Next Steps',
-    '콘텐츠 성과 분석': 'Content Performance Analysis',
-    '콘텐츠 전략 제안': 'Content Strategy Recommendations',
-    '작성자 성과 분석': 'Author Performance Analysis',
-    '작성자 육성 방안': 'Author Development Plan',
-    
-    // 통계 용어
-    '총 방문자': 'Total Visitors',
-    '총 페이지뷰': 'Total Page Views',
-    '총 콘텐츠 조회수': 'Total Content Views',
-    '분석 기간': 'Analysis Period',
-    '리포트 생성': 'Report Generated',
-    'AI 모델 사용': 'AI Model Used',
-    '방문자': 'visitors',
-    '페이지뷰': 'page views',
-    '조회수': 'views',
-    '콘텐츠': 'content',
-    '카테고리': 'category',
-    '작성자': 'author',
-    
-    // 시간 관련
-    '시간대': 'time period',
-    '주간': 'weekly',
-    '월간': 'monthly',
-    '일간': 'daily',
-    '전체': 'all time',
-    
-    // 분석 관련
-    '패턴': 'pattern',
-    '트렌드': 'trend',
-    '개선': 'improvement',
-    '성공': 'success',
-    '실패': 'failure',
-    '증가': 'increase',
-    '감소': 'decrease',
-    '안정': 'stable',
-    
-    // 일반 용어
-    '가장': 'most',
-    '높은': 'high',
-    '낮은': 'low',
-    '많은': 'many',
-    '적은': 'few',
-    '좋은': 'good',
-    '나쁜': 'poor',
-    '우수한': 'excellent',
-    '보통': 'average'
-  };
-  
-  let result = koreanText;
-  
-  // 정확한 매칭부터 시작
-  Object.entries(translations).forEach(([korean, english]) => {
-    const regex = new RegExp(korean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-    result = result.replace(regex, english);
-  });
-  
-  // 남은 한글 문자들을 제거하거나 대체
-  result = result.replace(/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, '');
-  
-  // 연속된 공백 정리
-  result = result.replace(/\s+/g, ' ').trim();
-  
-  return result || 'Content analysis in Korean (translation required)';
-};
-
-/**
- * 현재 날짜/시간 포맷팅
- */
-const formatDateTime = () => {
-  const now = new Date();
-  return now.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Seoul'
-  });
-};
-
-/**
- * 차트 캡처 함수
- */
-const captureChart = async (elementId) => {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    console.warn(`Chart element not found: ${elementId}`);
-    return null;
-  }
-  
-  try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      allowTaint: true,
-      width: element.offsetWidth,
-      height: element.offsetHeight
-    });
-    return canvas.toDataURL('image/png');
-  } catch (error) {
-    console.error('Chart capture error:', error);
-    return null;
-  }
-};
-
-/**
- * PDF에 헤더 추가 (한글 지원 - 번역 우선)
- */
-const addHeader = async (doc, title) => {
-  // AWS 로고 영역 (텍스트로 대체)
-  doc.setFillColor(PDF_CONFIG.colors.primary);
-  doc.rect(PDF_CONFIG.margins.left, PDF_CONFIG.margins.top, 170, 15, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(PDF_CONFIG.fonts.title);
-  doc.text('AWS Demo Factory', PDF_CONFIG.margins.left + 5, PDF_CONFIG.margins.top + 10);
-  
-  // 제목 처리 (한글 번역)
-  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(title);
-  let processedTitle = title;
-  
-  if (hasKorean) {
-    processedTitle = translateToEnglish(title);
-  }
-  
-  doc.setTextColor(PDF_CONFIG.colors.text);
-  doc.setFontSize(PDF_CONFIG.fonts.subtitle);
-  doc.text(processedTitle, PDF_CONFIG.margins.left, PDF_CONFIG.margins.top + 25);
-  
-  // 생성 일시
-  doc.setFontSize(PDF_CONFIG.fonts.small);
-  doc.setTextColor(PDF_CONFIG.colors.darkGray);
-  doc.text(`Generated: ${formatDateTime()}`, PDF_CONFIG.margins.left, PDF_CONFIG.margins.top + 35);
-  
-  return PDF_CONFIG.margins.top + 45;
-};
-
-/**
- * PDF에 섹션 제목 추가 (한글 지원 - 번역 우선)
- */
-const addSectionTitle = async (doc, title, yPosition) => {
-  doc.setFillColor(PDF_CONFIG.colors.lightGray);
-  doc.rect(PDF_CONFIG.margins.left, yPosition, 170, 8, 'F');
-  
-  // 한글이 포함된 경우 영어로 번역
-  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(title);
-  let processedTitle = title;
-  
-  if (hasKorean) {
-    processedTitle = translateToEnglish(title);
-    console.log('제목 번역:', title, '->', processedTitle);
-  }
-  
-  doc.setTextColor(PDF_CONFIG.colors.primary);
-  doc.setFontSize(PDF_CONFIG.fonts.subtitle);
-  doc.text(processedTitle, PDF_CONFIG.margins.left + 3, yPosition + 6);
-  
-  return yPosition + 15;
-};
-
-/**
- * PDF에 텍스트 블록 추가 (한글 지원 - 번역 우선)
- */
-const addTextBlock = async (doc, text, yPosition, maxWidth = 170) => {
-  // 한글이 포함된 경우 영어로 번역
-  const hasKorean = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text);
-  
-  let processedText = text;
-  if (hasKorean) {
-    processedText = translateToEnglish(text);
-    console.log('한글 텍스트 번역:', text.substring(0, 50) + '...');
-  }
-  
-  // 영어 텍스트로 PDF에 추가
-  doc.setTextColor(PDF_CONFIG.colors.text);
-  doc.setFontSize(PDF_CONFIG.fonts.body);
-  
-  const lines = doc.splitTextToSize(processedText, maxWidth);
-  doc.text(lines, PDF_CONFIG.margins.left, yPosition);
-  
-  return yPosition + (lines.length * 4) + 5;
-};
-
-/**
- * PDF에 차트 이미지 추가
- */
-const addChartImage = async (doc, chartId, yPosition, title) => {
-  const chartImage = await captureChart(chartId);
-  if (chartImage) {
-    // 차트 제목
-    doc.setFontSize(PDF_CONFIG.fonts.body);
-    doc.setTextColor(PDF_CONFIG.colors.darkGray);
-    doc.text(title, PDF_CONFIG.margins.left, yPosition);
-    yPosition += 8;
-    
-    // 차트 이미지
-    doc.addImage(chartImage, 'PNG', PDF_CONFIG.margins.left, yPosition, 170, 80);
-    return yPosition + 90;
-  }
-  return yPosition;
-};
-
-/**
- * 새 페이지 추가 및 헤더 설정 (한글 지원)
- */
-const addNewPage = async (doc, title) => {
-  doc.addPage();
-  return await addHeader(doc, title);
-};
-
-/**
- * AI 기반 전체 분석 리포트 생성
- */
-export const generateAIAnalyticsReport = async (analyticsData) => {
-  try {
-    console.log('🤖 AI 기반 분석 리포트 생성 시작...');
-    
-    // 1. AI 인사이트 생성
-    console.log('🔍 AI 인사이트 생성 중...');
-    const aiInsights = await generateAnalyticsInsights(analyticsData);
-    
-    // 2. 콘텐츠 분석 생성 (데이터가 있는 경우)
-    let contentAnalysis = null;
-    if (analyticsData.content && analyticsData.content.length > 0) {
-      console.log('📄 콘텐츠 분석 생성 중...');
-      contentAnalysis = await generateContentAnalysis(analyticsData.content);
+    for (let i = 0; i < parsedLines.length; i++) {
+      const lineData = parsedLines[i];
+      if (lineData.content || lineData.type === 'space') {
+        
+        if (lineData.type === 'space') {
+          currentY += 5; // 빈 줄 처리
+          continue;
+        }
+        
+        console.log(`🎨 ${i + 1}번째 줄 렌더링 (${lineData.type}): "${lineData.content.substring(0, 30)}..."`);
+        
+        // 스타일 적용
+        const currentFontSize = lineData.style.fontSize || fontSize;
+        const currentColor = lineData.style.color || color;
+        const currentFontWeight = lineData.style.fontWeight || fontWeight;
+        const marginLeft = lineData.style.marginLeft || 0;
+        const marginBottom = lineData.style.marginBottom || 2;
+        
+        // 각 줄을 이미지로 변환
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 캔버스 크기 설정 (고해상도)
+        const scale = 4;
+        canvas.width = maxWidth * 2.83 * scale;
+        canvas.height = currentFontSize * lineHeight * 2.83 * scale;
+        
+        // 고품질 렌더링 설정
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // 텍스트 스타일 설정
+        ctx.font = `${currentFontWeight} ${currentFontSize * scale}px 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', '맑은 고딕', sans-serif`;
+        ctx.fillStyle = currentColor;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.textRenderingOptimization = 'optimizeQuality';
+        
+        // 배경을 흰색으로 설정
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 텍스트 그리기
+        ctx.fillStyle = currentColor;
+        ctx.fillText(lineData.content, (10 + marginLeft) * scale, 5 * scale);
+        
+        // 이미지를 PDF에 추가
+        const imageData = canvas.toDataURL('image/png', 1.0);
+        const imageHeight = currentFontSize * lineHeight;
+        doc.addImage(imageData, 'PNG', x + marginLeft, currentY, maxWidth - marginLeft, imageHeight);
+        
+        console.log(`✅ ${i + 1}번째 줄 PDF 추가 완료 (${lineData.type}, y: ${currentY})`);
+        
+        currentY += imageHeight + marginBottom;
+        
+        // 페이지 넘김 체크
+        if (currentY > 270) {
+          doc.addPage();
+          currentY = 30;
+          console.log('📄 새 페이지 추가');
+        }
+      }
     }
     
-    // 3. 작성자 분석 생성 (데이터가 있는 경우)
-    let authorAnalysis = null;
-    if (analyticsData.authors && analyticsData.authors.length > 0) {
-      console.log('✍️ 작성자 분석 생성 중...');
-      authorAnalysis = await generateAuthorAnalysis(analyticsData.authors);
+    console.log(`✅ 한글 텍스트 이미지 변환 완료 (y: ${currentY})`);
+    return currentY + 5;
+    
+  } catch (error) {
+    console.error('❌ 한글 텍스트 이미지 변환 실패:', error);
+    
+    // 실패 시 영문으로 대체
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(options.fontSize || 12);
+    doc.text('[Korean text - encoding issue]', x, y);
+    
+    return y + 15;
+  }
+};
+
+/**
+ * 차트 섹션 타이틀을 영문과 한글로 추가
+ */
+const addChartSectionTitle = async (doc, englishTitle, koreanTitle, yPos) => {
+  console.log(`🏷️ 섹션 타이틀 추가: ${englishTitle} / ${koreanTitle}`);
+  
+  // 페이지 넘김 체크
+  if (yPos > 240) {
+    doc.addPage();
+    yPos = 30;
+  }
+  
+  // 영문 타이틀
+  doc.setTextColor(255, 153, 0); // AWS Orange
+  doc.setFontSize(14);
+  doc.text(englishTitle, 20, yPos);
+  console.log(`✅ 영문 타이틀 추가 완료: ${englishTitle}`);
+  
+  // 한글 타이틀 (이미지로 변환)
+  if (koreanTitle) {
+    console.log(`🇰🇷 한글 타이틀 이미지 변환 시작: ${koreanTitle}`);
+    try {
+      yPos = await addKoreanTextAsImage(doc, koreanTitle, 20, yPos + 5, {
+        fontSize: 12,
+        color: '#666666'
+      });
+      console.log(`✅ 한글 타이틀 이미지 변환 완료: ${koreanTitle}`);
+    } catch (error) {
+      console.error(`❌ 한글 타이틀 이미지 변환 실패: ${koreanTitle}`, error);
+      // 실패 시 영문으로 대체
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(10);
+      doc.text(`[Korean: ${koreanTitle}]`, 20, yPos + 5);
+      yPos += 15;
+    }
+  }
+  
+  return yPos + 10;
+};
+
+/**
+ * Chart.js 동적 로드
+ */
+const loadChartJS = () => {
+  return new Promise((resolve, reject) => {
+    if (typeof window.Chart !== 'undefined') {
+      resolve(window.Chart);
+      return;
     }
     
-    // 4. PDF 생성
-    console.log('📄 PDF 문서 생성 중...');
-    const doc = new jsPDF(PDF_CONFIG.orientation, PDF_CONFIG.unit, PDF_CONFIG.format);
-    
-    // 헤더 추가
-    let yPos = await addHeader(doc, 'AI Analytics Report');
-    
-    // AI 인사이트 섹션
-    yPos = await addSectionTitle(doc, '🤖 AI Generated Insights', yPos);
-    yPos = await addTextBlock(doc, aiInsights.summary, yPos);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
+    script.onload = () => {
+      console.log('✅ Chart.js 로드 완료');
+      resolve(window.Chart);
+    };
+    script.onerror = () => reject(new Error('Chart.js 로드 실패'));
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * 차트를 PDF에 추가
+ */
+const addChartToDoc = async (doc, chartCanvas, yPos, title) => {
+  try {
+    // 차트 이미지 생성
+    const imageData = chartCanvas.toDataURL('image/png');
     
     // 페이지 넘김 체크
-    if (yPos > 250) {
-      yPos = await addNewPage(doc, 'AI Analytics Report');
-    }
-    
-    // 데이터 요약 섹션
-    yPos = await addSectionTitle(doc, '📊 Data Summary', yPos + 10);
-    
-    const dataSummary = `
-Total Visitors: ${analyticsData.summary?.totalVisitors || 0}
-Total Page Views: ${analyticsData.summary?.totalPageViews || 0}
-Total Content Views: ${analyticsData.summary?.totalContentViews || 0}
-Analysis Period: ${analyticsData.period || 'All Time'}
-Report Generated: ${formatDateTime()}
-AI Model Used: ${aiInsights.modelUsed}
-    `.trim();
-    
-    yPos = await addTextBlock(doc, dataSummary, yPos);
-    
-    // 차트 추가 (가능한 경우)
     if (yPos > 200) {
-      yPos = await addNewPage(doc, 'AI Analytics Report - Charts');
+      doc.addPage();
+      yPos = 30;
     }
     
-    // 접속 목적 차트
-    yPos = await addChartImage(doc, 'purpose-pie-chart', yPos + 10, 'Access Purpose Distribution');
+    // 차트 이미지 추가
+    doc.addImage(imageData, 'PNG', 20, yPos, 170, 100);
     
-    // 콘텐츠 분석 섹션 (새 페이지)
-    if (contentAnalysis) {
-      yPos = await addNewPage(doc, 'AI Analytics Report - Content Analysis');
-      yPos = await addSectionTitle(doc, '📄 AI Content Analysis', yPos);
-      yPos = await addTextBlock(doc, contentAnalysis, yPos);
-      
-      // 콘텐츠 차트 추가
-      if (yPos > 200) {
-        yPos = await addNewPage(doc, 'AI Analytics Report - Content Charts');
-      }
-      yPos = await addChartImage(doc, 'content-bar-chart', yPos + 10, 'Top Content Performance');
-    }
+    console.log(`✅ ${title} 차트 PDF 추가 완료`);
     
-    // 작성자 분석 섹션 (새 페이지)
-    if (authorAnalysis) {
-      yPos = await addNewPage(doc, 'AI Analytics Report - Author Analysis');
-      yPos = await addSectionTitle(doc, '✍️ AI Author Analysis', yPos);
-      yPos = await addTextBlock(doc, authorAnalysis, yPos);
-      
-      // 작성자 차트 추가
-      if (yPos > 200) {
-        yPos = await addNewPage(doc, 'AI Analytics Report - Author Charts');
-      }
-      yPos = await addChartImage(doc, 'author-bar-chart', yPos + 10, 'Top Authors Performance');
-    }
-    
-    // 마지막 페이지 - 권장사항 및 다음 단계
-    yPos = await addNewPage(doc, 'AI Analytics Report - Recommendations');
-    yPos = await addSectionTitle(doc, '💡 AI Recommendations & Next Steps', yPos);
-    
-    const recommendations = `
-This report was generated using Amazon Bedrock's Claude 4 Sonnet model to provide 
-intelligent insights based on your AWS Demo Factory analytics data.
-
-Key Benefits of AI-Powered Analytics:
-• Automated pattern recognition and trend analysis
-• Actionable insights based on data patterns
-• Personalized recommendations for content strategy
-• Predictive analysis for future performance
-
-For more detailed analysis or custom insights, please contact your AWS solutions architect.
-
-Report Generation Details:
-• AI Model: Claude 4 Sonnet (us-west-2)
-• Data Points Analyzed: ${aiInsights.dataProcessed}
-• Generation Time: ${formatDateTime()}
-• Report Version: AI-Enhanced v1.0
-    `.trim();
-    
-    yPos = await addTextBlock(doc, recommendations, yPos);
-    
-    // PDF 저장
-    const fileName = `AWS_Demo_Factory_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-    
-    console.log('✅ AI 기반 PDF 리포트 생성 완료!');
-    return {
-      success: true,
-      fileName,
-      insights: aiInsights,
-      contentAnalysis,
-      authorAnalysis
-    };
+    return yPos + 110;
     
   } catch (error) {
-    console.error('❌ AI PDF 리포트 생성 실패:', error);
-    return {
-      success: false,
-      error: error.message,
-      fallback: 'AI 분석에 실패했습니다. 기본 리포트를 생성하시겠습니까?'
-    };
+    console.error(`❌ ${title} 차트 PDF 추가 실패:`, error);
+    return yPos + 10;
+  }
+};
+
+/**
+ * 전체 통계 차트 생성
+ */
+const createSummaryChart = async (summaryData, Chart) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Page Views', 'Content Views', 'Unique Visitors'],
+        datasets: [{
+          label: 'Statistics',
+          data: [
+            summaryData.totalPageViews || 0,
+            summaryData.totalContentViews || 0,
+            summaryData.uniqueVisitors || 0
+          ],
+          backgroundColor: ['#FF9900', '#232F3E', '#92D050'],
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+    
+    // 렌더링 완료 대기
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ 전체 통계 차트 생성 완료');
+    return canvas;
+    
+  } catch (error) {
+    console.error('❌ 전체 통계 차트 생성 실패:', error);
+    return null;
+  }
+};
+
+/**
+ * 접속 목적 차트 생성
+ */
+const createAccessPurposeChart = async (purposeData, Chart) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    
+    const chart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: purposeData.map(item => item.purpose || item.label),
+        datasets: [{
+          data: purposeData.map(item => item.count || item.value),
+          backgroundColor: ['#FF9900', '#232F3E', '#92D050', '#FFC000'],
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { font: { size: 12 } }
+          }
+        }
+      }
+    });
+    
+    // 렌더링 완료 대기
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ 접속 목적 차트 생성 완료');
+    return canvas;
+    
+  } catch (error) {
+    console.error('❌ 접속 목적 차트 생성 실패:', error);
+    return null;
+  }
+};
+
+/**
+ * 콘텐츠 분석 차트 생성
+ */
+const createContentChart = async (contentData, Chart) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    
+    const topContent = contentData.slice(0, 5); // 상위 5개만
+    
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: topContent.map(item => (item.title || item.name || 'Unknown').substring(0, 20) + '...'),
+        datasets: [{
+          label: 'Views',
+          data: topContent.map(item => item.views || item.count || 0),
+          backgroundColor: '#FF9900',
+          borderColor: '#232F3E',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true },
+          x: {
+            ticks: {
+              maxRotation: 45,
+              font: { size: 10 }
+            }
+          }
+        }
+      }
+    });
+    
+    // 렌더링 완료 대기
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ 콘텐츠 분석 차트 생성 완료');
+    return canvas;
+    
+  } catch (error) {
+    console.error('❌ 콘텐츠 분석 차트 생성 실패:', error);
+    return null;
+  }
+};
+
+/**
+ * 카테고리 분석 차트 생성
+ */
+const createCategoryChart = async (categoryData, Chart) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    
+    const chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: categoryData.map(item => item.category || item.name),
+        datasets: [{
+          data: categoryData.map(item => item.count || item.value),
+          backgroundColor: ['#FF9900', '#232F3E', '#92D050', '#FFC000', '#E88B00'],
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { font: { size: 12 } }
+          }
+        }
+      }
+    });
+    
+    // 렌더링 완료 대기
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ 카테고리 분석 차트 생성 완료');
+    return canvas;
+    
+  } catch (error) {
+    console.error('❌ 카테고리 분석 차트 생성 실패:', error);
+    return null;
+  }
+};
+
+/**
+ * 시간별 분석 차트 생성
+ */
+const createTimeChart = async (timeData, Chart) => {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timeData.map(item => item.date || item.time),
+        datasets: [{
+          label: 'Daily Views',
+          data: timeData.map(item => item.views || item.count),
+          borderColor: '#FF9900',
+          backgroundColor: 'rgba(255, 153, 0, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true },
+          x: {
+            ticks: {
+              maxRotation: 45,
+              font: { size: 10 }
+            }
+          }
+        }
+      }
+    });
+    
+    // 렌더링 완료 대기
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('✅ 시간별 분석 차트 생성 완료');
+    return canvas;
+    
+  } catch (error) {
+    console.error('❌ 시간별 분석 차트 생성 실패:', error);
+    return null;
   }
 };
 
@@ -475,27 +902,32 @@ export const generateAIContentReport = async (contentData) => {
   try {
     console.log('📄 AI 콘텐츠 리포트 생성 시작...');
     
-    const contentAnalysis = await generateContentAnalysis(contentData);
-    
+    const analysis = await generateContentAnalysis(contentData);
     const doc = new jsPDF(PDF_CONFIG.orientation, PDF_CONFIG.unit, PDF_CONFIG.format);
-    let yPos = await addHeader(doc, 'AI Content Analysis Report');
     
-    yPos = await addSectionTitle(doc, '📄 AI Content Insights', yPos);
-    yPos = await addTextBlock(doc, contentAnalysis, yPos);
+    let yPos = await addEnglishHeader(doc, 'AWS Demo Factory Content Analysis Report');
     
-    // 콘텐츠 차트 추가
-    if (yPos > 200) {
-      yPos = await addNewPage(doc, 'AI Content Analysis - Charts');
-    }
-    yPos = await addChartImage(doc, 'content-bar-chart', yPos + 10, 'Content Performance Analysis');
+    yPos = await addEnglishSectionTitle(doc, '📄 Content Analysis', yPos);
+    yPos = await addKoreanTextAsImage(doc, analysis.summary, 20, yPos, {
+      fontSize: 10,
+      maxWidth: 170
+    });
     
-    const fileName = `AWS_Demo_Factory_AI_Content_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `AWS_Demo_Factory_Content_Report_${new Date().toISOString().slice(0, 19).replace(/:/g, '')}.pdf`;
     doc.save(fileName);
     
-    return { success: true, fileName, analysis: contentAnalysis };
+    return {
+      success: true,
+      fileName: fileName,
+      message: 'AI 콘텐츠 분석 리포트가 성공적으로 생성되었습니다.'
+    };
+    
   } catch (error) {
     console.error('❌ AI 콘텐츠 리포트 생성 실패:', error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message
+    };
   }
 };
 
@@ -506,32 +938,116 @@ export const generateAIAuthorReport = async (authorData) => {
   try {
     console.log('✍️ AI 작성자 리포트 생성 시작...');
     
-    const authorAnalysis = await generateAuthorAnalysis(authorData);
-    
+    const analysis = await generateAuthorAnalysis(authorData);
     const doc = new jsPDF(PDF_CONFIG.orientation, PDF_CONFIG.unit, PDF_CONFIG.format);
-    let yPos = await addHeader(doc, 'AI Author Analysis Report');
     
-    yPos = await addSectionTitle(doc, '✍️ AI Author Insights', yPos);
-    yPos = await addTextBlock(doc, authorAnalysis, yPos);
+    let yPos = await addEnglishHeader(doc, 'AWS Demo Factory Author Analysis Report');
     
-    // 작성자 차트 추가
-    if (yPos > 200) {
-      yPos = await addNewPage(doc, 'AI Author Analysis - Charts');
-    }
-    yPos = await addChartImage(doc, 'author-bar-chart', yPos + 10, 'Author Performance Analysis');
+    yPos = await addEnglishSectionTitle(doc, '✍️ Author Analysis', yPos);
+    yPos = await addKoreanTextAsImage(doc, analysis.summary, 20, yPos, {
+      fontSize: 10,
+      maxWidth: 170
+    });
     
-    const fileName = `AWS_Demo_Factory_AI_Author_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `AWS_Demo_Factory_Author_Report_${new Date().toISOString().slice(0, 19).replace(/:/g, '')}.pdf`;
     doc.save(fileName);
     
-    return { success: true, fileName, analysis: authorAnalysis };
+    return {
+      success: true,
+      fileName: fileName,
+      message: 'AI 작성자 분석 리포트가 성공적으로 생성되었습니다.'
+    };
+    
   } catch (error) {
     console.error('❌ AI 작성자 리포트 생성 실패:', error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * AI 인사이트를 섹션별로 분리하는 함수
+ */
+const extractInsightSections = (fullInsight) => {
+  try {
+    console.log('📋 AI 인사이트 섹션 분리 시작...');
+    
+    const sections = {
+      overview: '',
+      accessPurpose: '',
+      content: '',
+      category: '',
+      time: '',
+      recommendations: ''
+    };
+    
+    // 전체 현황 요약 추출
+    const overviewMatch = fullInsight.match(/## 📊 전체 현황 요약([\s\S]*?)(?=## |🔍|$)/i);
+    if (overviewMatch) {
+      sections.overview = overviewMatch[1].trim();
+    }
+    
+    // 핵심 인사이트 중 사용자 관심 분야 분석 (접속 목적과 유사)
+    const userInterestMatch = fullInsight.match(/### 1\. 사용자 관심 분야 심층 분석([\s\S]*?)(?=### 2\.|## |💡|$)/i);
+    if (userInterestMatch) {
+      sections.accessPurpose = userInterestMatch[1].trim();
+    }
+    
+    // 콘텐츠 소비 패턴 분석
+    const contentMatch = fullInsight.match(/### 2\. 콘텐츠 소비 패턴 분석([\s\S]*?)(?=### 3\.|## |💡|$)/i);
+    if (contentMatch) {
+      sections.content = contentMatch[1].trim();
+    }
+    
+    // 시간대별 사용자 특성 (카테고리 대신 시간 분석으로 사용)
+    const timeMatch = fullInsight.match(/### 3\. 시간대별 사용자 특성([\s\S]*?)(?=### 4\.|## |💡|$)/i);
+    if (timeMatch) {
+      sections.time = timeMatch[1].trim();
+    }
+    
+    // 비즈니스 가치 창출 분석 (카테고리 분석으로 사용)
+    const businessMatch = fullInsight.match(/### 4\. 비즈니스 가치 창출 분석([\s\S]*?)(?=## |💡|$)/i);
+    if (businessMatch) {
+      sections.category = businessMatch[1].trim();
+    }
+    
+    // 전략적 권장사항 추출
+    const recommendationsMatch = fullInsight.match(/## 💡 전략적 권장사항([\s\S]*?)(?=## 📊|🎯|$)/i);
+    if (recommendationsMatch) {
+      sections.recommendations = recommendationsMatch[1].trim();
+    }
+    
+    console.log('✅ AI 인사이트 섹션 분리 완료');
+    console.log('📋 분리된 섹션:', {
+      overview: sections.overview ? '있음' : '없음',
+      accessPurpose: sections.accessPurpose ? '있음' : '없음',
+      content: sections.content ? '있음' : '없음',
+      category: sections.category ? '있음' : '없음',
+      time: sections.time ? '있음' : '없음',
+      recommendations: sections.recommendations ? '있음' : '없음'
+    });
+    
+    return sections;
+    
+  } catch (error) {
+    console.error('❌ AI 인사이트 섹션 분리 실패:', error);
+    // 오류 시 전체 인사이트를 overview에 넣어 fallback
+    return {
+      overview: fullInsight,
+      accessPurpose: '',
+      content: '',
+      category: '',
+      time: '',
+      recommendations: ''
+    };
   }
 };
 
 const aiPdfGenerator = {
   generateAIAnalyticsReport,
+  generateChartOnlyReport,
   generateAIContentReport,
   generateAIAuthorReport
 };

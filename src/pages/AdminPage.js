@@ -59,11 +59,14 @@ import {
 } from 'recharts';
 import { useAuth, USER_ROLES } from '../context/AuthContextCognito';
 import { useAnalytics } from '../context/AnalyticsContext';
-import { generateAnalyticsReport, generateSummaryReport } from '../utils/pdfGenerator';
+import dashboardDataService from '../services/dashboardDataService';
+import unifiedAnalyticsService from '../services/unifiedAnalyticsService';
+import { generateAnalyticsReport, generateSummaryReport } from '../utils/pdfGenerator'; // 기존 함수
 import { 
-  generateAIAnalyticsReport, 
+  generateAIAnalyticsReport as generateAIChartReport, 
   generateAIContentReport, 
-  generateAIAuthorReport 
+  generateAIAuthorReport,
+  generateChartOnlyReport 
 } from '../utils/aiPdfGenerator';
 import { testBedrockConnection } from '../utils/bedrockClient';
 import { 
@@ -80,13 +83,6 @@ const AdminPage = () => {
   const { isAdmin } = useAuth();
   
   const { 
-    getAnalyticsSummary, 
-    getContentAnalytics, 
-    getAuthorAnalytics, // 새로운 작성자 분석 함수 추가
-    getCategoryAnalytics, 
-    getTimeAnalytics, 
-    getHourlyAnalytics,
-    getAccessPurposeAnalytics,
     clearAnalytics,
     debugCategoryData,
     analytics
@@ -94,17 +90,61 @@ const AdminPage = () => {
   
   const [analyticsSummary, setAnalyticsSummary] = useState(null);
   const [contentAnalytics, setContentAnalytics] = useState([]);
-  const [authorAnalytics, setAuthorAnalytics] = useState([]); // 작성자 분석 데이터 추가
+  const [authorAnalytics, setAuthorAnalytics] = useState([]);
   const [categoryAnalytics, setCategoryAnalytics] = useState([]);
   const [timeAnalytics, setTimeAnalytics] = useState([]);
   const [hourlyAnalytics, setHourlyAnalytics] = useState([]);
   const [accessPurposeAnalytics, setAccessPurposeAnalytics] = useState(null);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   const [activeTab, setActiveTab] = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [useAI, setUseAI] = useState(true); // AI 사용 여부 토글
-  const [aiConnectionStatus, setAiConnectionStatus] = useState('checking'); // checking, connected, error
-  const [pythonPdfStatus, setPythonPdfStatus] = useState('checking'); // Python PDF 서버 상태
+  const [useAI, setUseAI] = useState(true);
+  const [aiConnectionStatus, setAiConnectionStatus] = useState('checking');
+  const [pythonPdfStatus, setPythonPdfStatus] = useState('checking');
+  const [unifiedAnalyticsData, setUnifiedAnalyticsData] = useState(null);
+
+  // 데이터 로딩 함수 (통합 데이터 서비스 사용)
+  const loadDashboardData = async () => {
+    setIsLoadingData(true);
+    try {
+      console.log('🔄 [AdminPage] 통합 대시보드 데이터 로딩 시작...');
+      
+      // 통합 데이터 서비스로 한 번에 모든 데이터 수집
+      const unifiedData = await unifiedAnalyticsService.gatherAllAnalyticsData();
+      
+      // 개별 state에 데이터 설정
+      setAnalyticsSummary(unifiedData.summary);
+      setContentAnalytics(unifiedData.content);
+      setAuthorAnalytics(unifiedData.authors);
+      setCategoryAnalytics(unifiedData.category);
+      setTimeAnalytics(unifiedData.time);
+      setHourlyAnalytics(unifiedData.hourly);
+      setAccessPurposeAnalytics(unifiedData.accessPurpose);
+
+      console.log(`✅ [AdminPage] 통합 대시보드 데이터 로딩 완료 (${unifiedData.metadata.totalDataPoints}개 데이터 포인트, 완성도: ${unifiedData.metadata.dataCompleteness}%)`);
+      
+      // 대시보드에서 사용할 데이터도 저장
+      setUnifiedAnalyticsData(unifiedData);
+    } catch (error) {
+      console.error('❌ [AdminPage] 대시보드 데이터 로딩 실패:', error);
+      alert('데이터 로딩에 실패했습니다: ' + error.message);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  // 데이터 새로고침 함수
+  const handleRefreshData = async () => {
+    console.log('🔄 [AdminPage] 수동 데이터 새로고침 시작...');
+    await loadDashboardData();
+    alert('📊 데이터가 성공적으로 새로고침되었습니다!');
+  };
+
+  // 컴포넌트 마운트 시 데이터 로딩
+  useEffect(() => {
+    loadDashboardData();
+  }, [selectedPeriod]);
 
   // AI 기반 PDF 다운로드 함수
   const handleDownloadAIReport = async () => {
@@ -124,7 +164,7 @@ const AdminPage = () => {
         period: selectedPeriod
       };
       
-      const result = await generateAIAnalyticsReport(analyticsData);
+      const result = await generateAIInsights(analyticsData);
       
       if (result.success) {
         alert(`✅ AI 기반 PDF 리포트가 성공적으로 생성되었습니다!\n\n파일명: ${result.fileName}\n\n🤖 AI 인사이트가 포함된 전문적인 분석 리포트를 확인해보세요.`);
@@ -217,19 +257,14 @@ const AdminPage = () => {
       // 약간의 지연을 두어 UI 업데이트 시간 확보
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      const analyticsData = {
-        summary: analyticsSummary,
-        accessPurpose: accessPurposeAnalytics,
-        content: contentAnalytics,
-        category: categoryAnalytics,
-        time: timeAnalytics,
-        hourly: hourlyAnalytics,
-        authors: authorAnalytics
-      };
+      // 통합 분석 데이터 수집 (한 번에 모든 데이터 수집)
+      console.log('🔄 통합 분석 데이터 수집 시작...');
+      const analyticsData = await unifiedAnalyticsService.gatherAllAnalyticsData();
 
-      console.log('📊 분석 데이터:', analyticsData);
+      console.log('📊 통합 분석 데이터:', analyticsData);
+      console.log(`📈 데이터 포인트: ${analyticsData.metadata.totalDataPoints}개, 완성도: ${analyticsData.metadata.dataCompleteness}%`);
 
-      // AI 인사이트 생성 (새로운 함수 사용)
+      // AI 인사이트 생성 (통합 데이터 사용)
       const result = await generateAIInsights(analyticsData);
       
       // 로딩 알림 제거
@@ -245,14 +280,58 @@ const AdminPage = () => {
         const insightsText = extractInsightsText(result.data);
         console.log('📝 추출된 인사이트 텍스트:', insightsText.substring(0, 200) + '...');
         
-        // Python PDF 생성기로 한글 PDF 생성
-        await generateAndDownloadAIReport(analyticsData, insightsText);
-        alert(`✅ 한글 AI 리포트가 성공적으로 생성되었습니다!`);
+        // AI PDF 생성기로 차트 포함 PDF 생성
+        console.log('📈 AI Chart.js 기반 PDF 생성 시작...');
+        
+        try {
+          // 이미 생성된 AI 인사이트를 전달하여 중복 호출 방지
+          const pdfResult = await generateAIChartReport(analyticsData, result.data);
+          
+          if (pdfResult.success) {
+            alert(`✅ 차트가 포함된 AI 리포트가 성공적으로 생성되었습니다!\n\n📄 파일명: ${pdfResult.fileName}\n📁 다운로드 폴더를 확인해주세요.`);
+          } else {
+            throw new Error(pdfResult.error);
+          }
+        } catch (aiError) {
+          console.error('❌ AI PDF 생성 실패:', aiError.message);
+          
+          // Bedrock API 제한 오류인 경우 차트 전용 PDF 생성
+          if (aiError.message.includes('요청이 너무 많습니다') || aiError.message.includes('rate limit')) {
+            console.log('📈 차트 전용 PDF 생성 시도...');
+            
+            const chartResult = await generateChartOnlyReport(analyticsData, insightsText);
+            
+            if (chartResult.success) {
+              alert(`✅ 차트가 포함된 분석 리포트가 성공적으로 생성되었습니다!\n\n📄 파일명: ${chartResult.fileName}\n📁 다운로드 폴더를 확인해주세요.\n\nℹ️ AI 인사이트는 API 제한으로 인해 생략되었습니다.`);
+            } else {
+              throw new Error(chartResult.error);
+            }
+          } else {
+            throw aiError;
+          }
+        }
       } else {
         console.error('❌ AI 인사이트 생성 실패:', result.error);
-        const useBasic = window.confirm(`❌ AI 분석에 실패했습니다.\n\n${result.error}\n\n기본 리포트를 생성하시겠습니까?`);
-        if (useBasic) {
-          await handleDownloadFullReport();
+        
+        // AI 인사이트 실패 시 차트 전용 PDF 생성 제안
+        const useChartOnly = window.confirm(`❌ AI 분석에 실패했습니다.\n\n${result.error}\n\n차트만 포함된 분석 리포트를 생성하시겠습니까?`);
+        
+        if (useChartOnly) {
+          console.log('📈 차트 전용 PDF 생성 시도...');
+          
+          const chartResult = await generateChartOnlyReport(analyticsData);
+          
+          if (chartResult.success) {
+            alert(`✅ 차트가 포함된 분석 리포트가 성공적으로 생성되었습니다!\n\n📄 파일명: ${chartResult.fileName}\n📁 다운로드 폴더를 확인해주세요.`);
+          } else {
+            console.error('❌ 차트 전용 PDF 생성 실패:', chartResult.error);
+            
+            // 최종 대체 방안으로 기본 리포트 생성
+            const useBasic = window.confirm(`차트 생성도 실패했습니다.\n\n기본 리포트를 생성하시겠습니까?`);
+            if (useBasic) {
+              await handleDownloadFullReport();
+            }
+          }
         }
       }
     } catch (error) {
@@ -498,43 +577,36 @@ const AdminPage = () => {
   };
 
   // 사용자 계정 삭제
+  // 사용자 계정 삭제 (백엔드 API 사용)
   const deleteUser = async (username) => {
     try {
       console.log('🗑️ [AdminPage] 사용자 삭제 시작:', username);
-      console.log('🔧 [AdminPage] 삭제 설정:', {
-        region: process.env.REACT_APP_COGNITO_REGION || 'us-west-2',
-        userPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        username: username
+      
+      const backendUrl = process.env.REACT_APP_BACKEND_API_URL || window.location.origin;
+      const response = await fetch(`${backendUrl}/api/cognito/users/${username}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       
-      const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider({
-        region: process.env.REACT_APP_COGNITO_REGION || 'us-west-2'
-      });
-
-      const params = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Username: username
-      };
-
-      console.log('📤 [AdminPage] AdminDeleteUser 호출 중...');
-      await cognitoIdentityServiceProvider.adminDeleteUser(params).promise();
-      console.log('✅ [AdminPage] 사용자 삭제 성공:', username);
+      const data = await response.json();
       
-      // 사용자 목록 새로고침
-      await fetchCognitoUsers();
-      alert(`사용자 "${username}"이 성공적으로 삭제되었습니다.`);
+      if (response.ok && data.success) {
+        console.log('✅ [AdminPage] 사용자 삭제 성공:', username);
+        
+        // 사용자 목록 새로고침
+        await fetchCognitoUsers();
+        alert(`사용자 "${username}"이 성공적으로 삭제되었습니다.`);
+      } else {
+        throw new Error(data.error || '사용자 삭제 실패');
+      }
       
     } catch (error) {
       console.error('❌ 사용자 삭제 실패:', error);
-      console.error('❌ 오류 상세:', {
-        message: error.message,
-        code: error.code,
-        statusCode: error.statusCode
-      });
       alert(`사용자 삭제에 실패했습니다: ${error.message}`);
     }
   };
-
   // 임시 비밀번호 생성 함수
   const generateTempPassword = () => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*';
@@ -556,87 +628,49 @@ const AdminPage = () => {
   };
 
   // 사용자 비밀번호 초기화
+  // 사용자 비밀번호 초기화 (백엔드 API 사용)
   const resetUserPassword = async (username, userEmail) => {
     try {
       console.log('🔑 [AdminPage] 비밀번호 초기화 시작:', username);
       
-      const cognitoIdentityServiceProvider = new AWS.CognitoIdentityServiceProvider({
-        region: process.env.REACT_APP_COGNITO_REGION || 'us-west-2'
+      const backendUrl = process.env.REACT_APP_BACKEND_API_URL || window.location.origin;
+      const response = await fetch(`${backendUrl}/api/cognito/users/${username}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
-
-      // 1단계: 사용자 상태 확인
-      console.log('🔍 [AdminPage] 사용자 상태 확인 중...');
-      const getUserParams = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Username: username
-      };
       
-      const userInfo = await cognitoIdentityServiceProvider.adminGetUser(getUserParams).promise();
-      console.log('📋 [AdminPage] 현재 사용자 상태:', userInfo.UserStatus);
-
-      // 2단계: 임시 비밀번호 생성 및 설정
-      const tempPassword = generateTempPassword();
-      console.log('🔧 [AdminPage] 임시 비밀번호 생성 완료');
-
-      const setPasswordParams = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Username: username,
-        Password: tempPassword,
-        Permanent: false // 임시 비밀번호로 설정
-      };
-
-      console.log('📤 [AdminPage] AdminSetUserPassword 호출 중...');
-      await cognitoIdentityServiceProvider.adminSetUserPassword(setPasswordParams).promise();
-      console.log('✅ [AdminPage] 임시 비밀번호 설정 완료');
-
-      // 3단계: 사용자 상태를 FORCE_CHANGE_PASSWORD로 설정
-      const setUserMFAParams = {
-        UserPoolId: process.env.REACT_APP_COGNITO_USER_POOL_ID,
-        Username: username,
-        MFAOptions: []
-      };
-
-      try {
-        await cognitoIdentityServiceProvider.adminSetUserMFAPreference(setUserMFAParams).promise();
-        console.log('✅ [AdminPage] 사용자 MFA 설정 완료');
-      } catch (mfaError) {
-        console.warn('⚠️ [AdminPage] MFA 설정 실패 (무시):', mfaError.message);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        console.log('✅ [AdminPage] 비밀번호 초기화 성공:', username);
+        
+        // 임시 비밀번호를 클립보드에 복사
+        try {
+          await navigator.clipboard.writeText(data.tempPassword);
+          console.log('📋 [AdminPage] 임시 비밀번호 클립보드 복사 완료');
+        } catch (clipboardError) {
+          console.warn('⚠️ [AdminPage] 클립보드 복사 실패:', clipboardError);
+        }
+        
+        // 사용자에게 안내 메시지
+        const message = `✅ 비밀번호 초기화 완료!\n\n` +
+                       `사용자: ${username} (${userEmail})\n` +
+                       `임시 비밀번호: ${data.tempPassword}\n\n` +
+                       `📋 임시 비밀번호가 클립보드에 복사되었습니다.\n\n` +
+                       `⚠️ 보안 주의사항:\n` +
+                       `• 이 비밀번호를 안전한 방법으로 사용자에게 전달하세요\n` +
+                       `• 사용자는 다음 로그인 시 새 비밀번호로 변경해야 합니다\n` +
+                       `• 이 창을 닫은 후 임시 비밀번호는 다시 확인할 수 없습니다`;
+        
+        alert(message);
+      } else {
+        throw new Error(data.error || '비밀번호 초기화 실패');
       }
-
-      // 4단계: 최종 상태 확인
-      const finalUserInfo = await cognitoIdentityServiceProvider.adminGetUser(getUserParams).promise();
-      console.log('📋 [AdminPage] 최종 사용자 상태:', finalUserInfo.UserStatus);
-      
-      console.log('✅ [AdminPage] 비밀번호 초기화 전체 과정 완료:', username);
-      
-      // 임시 비밀번호를 클립보드에 복사
-      try {
-        await navigator.clipboard.writeText(tempPassword);
-        console.log('📋 [AdminPage] 임시 비밀번호 클립보드 복사 완료');
-      } catch (clipboardError) {
-        console.warn('⚠️ [AdminPage] 클립보드 복사 실패:', clipboardError);
-      }
-      
-      // 사용자에게 안내 메시지
-      const message = `✅ 비밀번호 초기화 완료!\n\n` +
-                     `사용자: ${username} (${userEmail})\n` +
-                     `임시 비밀번호: ${tempPassword}\n\n` +
-                     `📋 임시 비밀번호가 클립보드에 복사되었습니다.\n\n` +
-                     `⚠️ 보안 주의사항:\n` +
-                     `• 이 비밀번호를 안전한 방법으로 사용자에게 전달하세요\n` +
-                     `• 사용자는 다음 로그인 시 새 비밀번호로 변경해야 합니다\n` +
-                     `• 이 창을 닫은 후 임시 비밀번호는 다시 확인할 수 없습니다\n` +
-                     `• 사용자 상태가 정상으로 설정되었습니다`;
-      
-      alert(message);
       
     } catch (error) {
       console.error('❌ 비밀번호 초기화 실패:', error);
-      console.error('❌ 오류 상세:', {
-        message: error.message,
-        code: error.code,
-        statusCode: error.statusCode
-      });
       alert(`비밀번호 초기화에 실패했습니다: ${error.message}`);
     }
   };
@@ -731,41 +765,59 @@ const AdminPage = () => {
   }, [useAI]);
 
   useEffect(() => {
-    // 분석 데이터 로드
-    const summary = getAnalyticsSummary();
-    setAnalyticsSummary(summary);
+    // 분석 데이터 로드 (비동기 처리)
+    const loadAnalyticsData = async () => {
+      try {
+        console.log('📊 [AdminPage] 분석 데이터 로딩 시작...');
+        
+        // 실시간 데이터 로드
+        const summary = await dashboardDataService.getAnalyticsSummary();
+        setAnalyticsSummary(summary);
 
-    // 콘텐츠 분석 데이터 로드
-    const contentData = getContentAnalytics(selectedPeriod);
-    setContentAnalytics(contentData);
+        // 콘텐츠 분석 데이터 로드
+        const contentData = await dashboardDataService.getContentAnalytics(selectedPeriod);
+        setContentAnalytics(contentData);
 
-    // 작성자 분석 데이터 로드
-    const authorData = getAuthorAnalytics(selectedPeriod);
-    setAuthorAnalytics(authorData);
+        // 작성자 분석 데이터 로드
+        const authorData = await dashboardDataService.getAuthorAnalytics();
+        setAuthorAnalytics(authorData);
 
-    // 카테고리 분석 데이터 로드
-    const categoryData = getCategoryAnalytics(selectedPeriod);
-    setCategoryAnalytics(categoryData);
+        // 카테고리 분석 데이터 로드
+        const categoryData = await dashboardDataService.getCategoryAnalytics();
+        setCategoryAnalytics(categoryData);
 
-    // 시간별 분석 데이터 로드
-    const timeData = getTimeAnalytics(selectedPeriod);
-    setTimeAnalytics(timeData);
+        // 시간별 분석 데이터 로드
+        const timeData = await dashboardDataService.getTimeAnalytics(selectedPeriod);
+        setTimeAnalytics(timeData);
 
-    // 시간대별 분석 데이터 로드
-    const hourlyData = getHourlyAnalytics();
-    setHourlyAnalytics(hourlyData);
+        // 시간대별 분석 데이터 로드
+        const hourlyData = await dashboardDataService.getHourlyAnalytics();
+        setHourlyAnalytics(hourlyData);
 
-    // 접속 목적 분석 데이터 로드
-    const accessPurposeData = getAccessPurposeAnalytics();
-    setAccessPurposeAnalytics(accessPurposeData);
+        // 접속 목적 분석 데이터 로드
+        const accessPurposeData = await dashboardDataService.getAccessPurposeAnalytics();
+        setAccessPurposeAnalytics(accessPurposeData);
+        
+        console.log('✅ [AdminPage] 분석 데이터 로딩 완료:', {
+          totalVisitors: summary.totalVisitors,
+          totalPageViews: summary.totalPageViews,
+          totalContentViews: summary.totalContentViews,
+          contentAnalyticsCount: contentData.length,
+          accessPurposesCount: accessPurposeData.length
+        });
+        
+      } catch (error) {
+        console.error('❌ [AdminPage] 분석 데이터 로딩 실패:', error);
+      }
+    };
     
-    // Skip 데이터 디버그 정보
-    console.log('🔍 [AdminPage] 접속 목적 분석 데이터:', accessPurposeData);
-    console.log('🔍 [AdminPage] Skip 데이터 확인:', accessPurposeData?.totalPurposes?.find(p => p.purpose === 'Skipped'));
-
+    loadAnalyticsData();
+    
     // Cognito에서 사용자 목록 로드
     fetchCognitoUsers();
-  }, [getAnalyticsSummary, getContentAnalytics, getAuthorAnalytics, getCategoryAnalytics, getTimeAnalytics, getHourlyAnalytics, getAccessPurposeAnalytics, selectedPeriod]);
+  }, [selectedPeriod]);
+  
+
 
   // 관리자 권한 확인
   if (!isAdmin()) {
@@ -895,6 +947,16 @@ const AdminPage = () => {
         
         <Button
           variant="outlined"
+          onClick={handleRefreshData}
+          disabled={isLoadingData}
+          startIcon={isLoadingData ? <CircularProgress size={16} /> : <RefreshIcon />}
+          sx={{ ml: 1, minWidth: '120px' }}
+        >
+          {isLoadingData ? '로딩 중...' : '데이터 새로고침'}
+        </Button>
+        
+        <Button
+          variant="outlined"
           color="success"
           size="small"
           onClick={handleDownloadSummary}
@@ -958,7 +1020,18 @@ const AdminPage = () => {
         </Button>
       </Box>
 
+      {/* 로딩 상태 표시 */}
+      {isLoadingData && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+          <CircularProgress size={40} />
+          <Typography variant="h6" sx={{ ml: 2 }}>
+            대시보드 데이터 로딩 중...
+          </Typography>
+        </Box>
+      )}
+
       {/* 통계 카드 */}
+      {!isLoadingData && (
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={2.4}>
           <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
@@ -997,7 +1070,7 @@ const AdminPage = () => {
                 콘텐츠 조회수
               </Typography>
               <Typography variant="h4" component="div" fontWeight="bold">
-                {contentAnalytics.reduce((sum, item) => sum + item.totalViews, 0)}
+                {contentAnalytics.reduce((sum, item) => sum + (item.views || 0), 0)}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
                 실제 콘텐츠 조회
@@ -1012,7 +1085,7 @@ const AdminPage = () => {
                 인기 카테고리
               </Typography>
               <Typography variant="h6" component="div" fontWeight="bold">
-                {categoryAnalytics[0]?.category || 'N/A'}
+                {categoryAnalytics[0]?.name || 'N/A'}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
                 {categoryAnalytics[0]?.totalViews || 0} 조회
@@ -1023,7 +1096,7 @@ const AdminPage = () => {
         <Grid item xs={12} sm={6} md={2.4}>
           <Card sx={{ 
             background: (() => {
-              const skippedData = accessPurposeAnalytics?.totalPurposes?.find(p => p.purpose === 'Skipped');
+              const skippedData = accessPurposeAnalytics?.find(p => p.purpose === 'Skipped');
               const skippedPercentage = skippedData?.percentage || 0;
               if (skippedPercentage > 30) {
                 return 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)'; // 높은 비율 - 빨간색
@@ -1040,15 +1113,16 @@ const AdminPage = () => {
                 ⏭️ 목적 선택 Skip
               </Typography>
               <Typography variant="h4" component="div" fontWeight="bold">
-                {accessPurposeAnalytics?.totalPurposes?.find(p => p.purpose === 'Skipped')?.count || 0}
+                {accessPurposeAnalytics?.find(p => p.purpose === 'Skipped')?.count || 0}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                {accessPurposeAnalytics?.totalPurposes?.find(p => p.purpose === 'Skipped')?.percentage || 0}% 건너뜀
+                {accessPurposeAnalytics?.find(p => p.purpose === 'Skipped')?.percentage || 0}% 건너뜀
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+      )}
 
       {/* 탭 네비게이션 */}
       <Paper sx={{ mb: 3 }}>
@@ -1087,18 +1161,33 @@ const AdminPage = () => {
                   <YAxis />
                   <Tooltip 
                     labelFormatter={(label) => `날짜: ${label}`}
-                    formatter={(value) => [value, '조회수']}
+                    formatter={(value, name) => {
+                      if (name === 'pageViews') return [value, '페이지 조회'];
+                      if (name === 'contentViews') return [value, '콘텐츠 조회'];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="pageViews" 
+                    stroke="#8884d8" 
+                    fill="url(#colorViews)"
                   />
                   <Area 
                     type="monotone" 
-                    dataKey="views" 
-                    stroke="#8884d8" 
-                    fill="url(#colorViews)"
+                    dataKey="contentViews" 
+                    stroke="#82ca9d" 
+                    fill="url(#colorContentViews)"
                   />
                   <defs>
                     <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="colorContentViews" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
                 </AreaChart>
@@ -1234,17 +1323,12 @@ const AdminPage = () => {
                                 variant="outlined"
                               />
                               <Chip 
-                                label={`총 ${content.totalViews}회`} 
+                                label={`총 ${content.views || 0}회`} 
                                 size="small" 
                                 color="secondary"
                               />
                               <Chip 
-                                label={`기간 ${content.periodViews}회`} 
-                                size="small" 
-                                color="success"
-                              />
-                              <Chip 
-                                label={`❤️ ${content.likes}`} 
+                                label={`❤️ 좋아요 ${content.likes || 0}개`} 
                                 size="small" 
                                 color="error"
                                 variant="outlined"
@@ -1360,7 +1444,7 @@ const AdminPage = () => {
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
                               <Chip 
-                                label={`콘텐츠 ${author.totalContents}개`} 
+                                label={`콘텐츠 ${author.contentCount}개`} 
                                 size="small" 
                                 color="primary"
                               />
@@ -1376,7 +1460,7 @@ const AdminPage = () => {
                                 variant="outlined"
                               />
                               <Chip 
-                                label={`기간 조회수 ${author.periodViews.toLocaleString()}회`} 
+                                label={`평균 조회수 ${author.avgViews.toLocaleString()}회`} 
                                 size="small" 
                                 color="success"
                               />
@@ -1384,12 +1468,13 @@ const AdminPage = () => {
                             {/* 작성자의 인기 콘텐츠 미리보기 */}
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="caption" color="text.secondary">
-                                인기 콘텐츠: {author.contents
-                                  .sort((a, b) => b.views - a.views)
-                                  .slice(0, 2)
-                                  .map(content => content.title)
-                                  .join(', ')}
-                                {author.contents.length > 2 && ` 외 ${author.contents.length - 2}개`}
+                                인기 콘텐츠: {author.contents && author.contents.length > 0 
+                                  ? author.contents.slice(0, 2).map(content => content.title).join(', ')
+                                  : 'N/A'}
+                                {author.contents && author.contents.length > 2 && ` 외 ${author.contents.length - 2}개`}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                카테고리: {author.categories && author.categories.length > 0 ? author.categories.join(', ') : 'N/A'}
                               </Typography>
                             </Box>
                           </Box>
@@ -1432,7 +1517,7 @@ const AdminPage = () => {
                     labelFormatter={(label) => `작성자: ${label}`}
                   />
                   <Bar dataKey="totalViews" fill="#8884d8" name="totalViews" />
-                  <Bar dataKey="totalLikes" fill="#82ca9d" name="totalLikes" />
+                  <Bar dataKey="contentCount" fill="#82ca9d" name="totalContents" />
                 </BarChart>
               </ResponsiveContainer>
             </Paper>
@@ -1469,7 +1554,7 @@ const AdminPage = () => {
                   <BarChart data={categoryAnalytics}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
-                      dataKey="category" 
+                      dataKey="name" 
                       tick={{ fontSize: 12 }}
                       angle={-45}
                       textAnchor="end"
@@ -1477,10 +1562,22 @@ const AdminPage = () => {
                     />
                     <YAxis />
                     <Tooltip 
-                      formatter={(value) => [value, '조회수']}
-                      labelFormatter={(label) => `카테고리: ${label}`}
+                      formatter={(value, name) => {
+                        if (name === 'totalViews') return [value, '총 조회수'];
+                        if (name === 'contentCount') return [value, '콘텐츠 수'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label) => `카테곣리: ${label}`}
                     />
-                    <Bar dataKey="totalViews" fill="#82ca9d" />
+                    <Legend 
+                      formatter={(value) => {
+                        if (value === 'totalViews') return '총 조회수';
+                        if (value === 'contentCount') return '콘텐츠 수';
+                        return value;
+                      }}
+                    />
+                    <Bar dataKey="totalViews" fill="#82ca9d" name="totalViews" />
+                    <Bar dataKey="contentCount" fill="#8884d8" name="contentCount" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -1508,7 +1605,7 @@ const AdminPage = () => {
               {categoryAnalytics.length > 0 ? (
                 <List>
                   {categoryAnalytics.map((category, index) => (
-                    <React.Fragment key={category.category}>
+                    <React.Fragment key={category.name}>
                       <ListItem>
                         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                           <Typography 
@@ -1523,18 +1620,24 @@ const AdminPage = () => {
                           </Typography>
                           <Box sx={{ flexGrow: 1, ml: 2 }}>
                             <Typography variant="subtitle1" fontWeight="medium">
-                              {category.category}
+                              {category.name}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                               <Chip 
-                                label={`총 ${category.totalViews}회`} 
+                                label={`총 ${category.totalViews || 0}회`} 
                                 size="small" 
                                 color="primary"
                               />
                               <Chip 
-                                label={`기간 ${category.periodViews}회`} 
+                                label={`콘텐츠 ${category.contentCount || 0}개`} 
                                 size="small" 
                                 color="secondary"
+                              />
+                              <Chip 
+                                label={`평균 ${category.avgViews || 0}회`} 
+                                size="small" 
+                                color="info"
+                                variant="outlined"
                               />
                               {category.lastViewed && (
                                 <Chip 
@@ -1588,31 +1691,141 @@ const AdminPage = () => {
               <ResponsiveContainer width="100%" height={300} id="hourly-chart">
                 <AreaChart data={hourlyAnalytics}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" />
+                  <XAxis dataKey="hourLabel" />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value) => [value, '조회수']}
+                    formatter={(value, name) => {
+                      if (name === 'pageViews') return [value, '페이지 조회'];
+                      if (name === 'contentViews') return [value, '콘텐츠 조회'];
+                      if (name === 'visitors') return [value, '방문자 수'];
+                      return [value, name];
+                    }}
                     labelFormatter={(label) => `시간: ${label}`}
+                  />
+                  <Legend />
+                  <Area 
+                    type="monotone" 
+                    dataKey="pageViews" 
+                    stroke="#ff7300" 
+                    fill="url(#colorHourly)"
+                    name="pageViews"
                   />
                   <Area 
                     type="monotone" 
-                    dataKey="views" 
-                    stroke="#ff7300" 
-                    fill="url(#colorHourly)"
+                    dataKey="contentViews" 
+                    stroke="#82ca9d" 
+                    fill="url(#colorHourlyContent)"
+                    name="contentViews"
                   />
                   <defs>
                     <linearGradient id="colorHourly" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ff7300" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#ff7300" stopOpacity={0.1}/>
                     </linearGradient>
+                    <linearGradient id="colorHourlyContent" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
+                    </linearGradient>
                   </defs>
                 </AreaChart>
               </ResponsiveContainer>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                 💡 피크 시간대: {hourlyAnalytics.reduce((max, current) => 
-                  current.views > max.views ? current : max, 
-                  { views: 0, label: 'N/A' }
-                ).label}
+                  (current.pageViews || 0) > (max.pageViews || 0) ? current : max, 
+                  { pageViews: 0, hourLabel: 'N/A' }
+                ).hourLabel}
+              </Typography>
+            </Paper>
+          </Grid>
+
+          {/* 일자별 접속자 수 그래프 */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                📅 일자별 접속자 수 ({selectedPeriod === 'week' ? '최근 7일' : selectedPeriod === 'month' ? '최근 30일' : '전체'})
+              </Typography>
+              {timeAnalytics && timeAnalytics.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300} id="daily-visitors-chart">
+                  <AreaChart data={timeAnalytics}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(label) => `날짜: ${label}`}
+                      formatter={(value, name) => {
+                        if (name === 'visitors') return [value, '일일 방문자 수'];
+                        if (name === 'pageViews') return [value, '일일 페이지 조회'];
+                        if (name === 'contentViews') return [value, '일일 콘텐츠 조회'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend 
+                      formatter={(value) => {
+                        if (value === 'visitors') return '일일 방문자 수';
+                        if (value === 'pageViews') return '일일 페이지 조회';
+                        if (value === 'contentViews') return '일일 콘텐츠 조회';
+                        return value;
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="visitors" 
+                      stroke="#8884d8" 
+                      fill="url(#colorDailyVisitors)"
+                      name="visitors"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="pageViews" 
+                      stroke="#82ca9d" 
+                      fill="url(#colorDailyPageViews)"
+                      name="pageViews"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="contentViews" 
+                      stroke="#ffc658" 
+                      fill="url(#colorDailyContentViews)"
+                      name="contentViews"
+                    />
+                    <defs>
+                      <linearGradient id="colorDailyVisitors" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorDailyPageViews" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorDailyContentViews" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ffc658" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ffc658" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ 
+                  height: 300, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: 'text.secondary'
+                }}>
+                  <Typography variant="h6">
+                    📅 일자별 데이터가 없습니다
+                  </Typography>
+                </Box>
+              )}
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                📈 최고 방문자 수: {timeAnalytics && timeAnalytics.length > 0 ? 
+                  Math.max(...timeAnalytics.map(item => item.visitors || 0)) : 0}명
               </Typography>
             </Paper>
           </Grid>
@@ -1627,11 +1840,17 @@ const AdminPage = () => {
               <Typography variant="h6" gutterBottom>
                 🎯 전체 접속 목적 통계
               </Typography>
-              {accessPurposeAnalytics?.totalPurposes?.length > 0 ? (
+              {console.log('🎯 [AdminPage] 접속 목적 차트 렌더링 조건:', {
+                accessPurposeAnalytics,
+                isArray: Array.isArray(accessPurposeAnalytics),
+                length: accessPurposeAnalytics?.length,
+                condition: accessPurposeAnalytics && accessPurposeAnalytics.length > 0
+              })}
+              {accessPurposeAnalytics && accessPurposeAnalytics.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300} id="access-purpose-pie-chart">
                   <PieChart>
                     <Pie
-                      data={accessPurposeAnalytics.totalPurposes.map(item => ({
+                      data={accessPurposeAnalytics.map(item => ({
                         name: item.purpose,
                         value: item.count,
                         percentage: item.percentage
@@ -1643,16 +1862,17 @@ const AdminPage = () => {
                       dataKey="value"
                       label={({ name, percentage }) => `${name} ${percentage}%`}
                     >
-                      {accessPurposeAnalytics.totalPurposes.map((entry, index) => (
+                      {accessPurposeAnalytics.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getPurposeColor(entry.purpose, index)} />
                       ))}
                     </Pie>
                     <Tooltip 
                       formatter={(value, name) => [
-                        `${value}명 (${accessPurposeAnalytics.totalPurposes.find(p => p.purpose === name)?.percentage}%)`, 
+                        `${value}명 (${accessPurposeAnalytics.find(p => p.purpose === name)?.percentage}%)`, 
                         '방문자 수'
                       ]}
                     />
+                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -1678,36 +1898,9 @@ const AdminPage = () => {
                 📊 접속 목적 상세 분석
               </Typography>
               
-              {/* Skip 데이터 별도 표시 */}
-              {(() => {
-                const skippedData = accessPurposeAnalytics?.totalPurposes?.find(p => p.purpose === 'Skipped');
-                const hasSkipData = skippedData && skippedData.count > 0;
-                
-                return hasSkipData ? (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      ⏭️ 목적 선택 건너뜀 현황
-                    </Typography>
-                    <Typography variant="body2">
-                      총 {skippedData.count}명 ({skippedData.percentage}%)이 접속 목적 선택을 건너뛰었습니다.
-                      {parseFloat(skippedData.percentage) > 30 && ' 높은 비율로 개선이 필요합니다.'}
-                    </Typography>
-                  </Alert>
-                ) : (
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      ✅ 모든 방문자가 목적을 선택했습니다
-                    </Typography>
-                    <Typography variant="body2">
-                      현재까지 목적 선택을 건너뛴 사용자가 없습니다.
-                    </Typography>
-                  </Alert>
-                );
-              })()}
-              
-              {accessPurposeAnalytics?.totalPurposes?.length > 0 ? (
+              {accessPurposeAnalytics && accessPurposeAnalytics.length > 0 ? (
                 <List>
-                  {accessPurposeAnalytics.totalPurposes.map((purpose, index) => (
+                  {accessPurposeAnalytics.map((purpose, index) => (
                     <React.Fragment key={purpose.purpose}>
                       <ListItem sx={{ 
                         backgroundColor: purpose.purpose === 'Skipped' ? 'rgba(255, 107, 107, 0.1)' : 'transparent',
@@ -1747,230 +1940,17 @@ const AdminPage = () => {
                                 color={purpose.purpose === 'Skipped' ? 'error' : 'secondary'}
                                 variant={purpose.purpose === 'Skipped' ? 'filled' : 'outlined'}
                               />
-                              {purpose.purpose === 'Skipped' && parseFloat(purpose.percentage) > 30 && (
-                                <Chip 
-                                  label="⚠️ 높음" 
-                                  size="small" 
-                                  color="warning"
-                                  variant="filled"
-                                />
-                              )}
                             </Box>
                           </Box>
                         </Box>
                       </ListItem>
-                      {index < accessPurposeAnalytics.totalPurposes.length - 1 && <Divider />}
+                      {index < accessPurposeAnalytics.length - 1 && <Divider />}
                     </React.Fragment>
                   ))}
                 </List>
               ) : (
                 <Alert severity="info">
                   접속 목적 데이터가 없습니다. 사용자가 접속 목적을 선택하면 여기에 표시됩니다.
-                </Alert>
-              )}
-            </Paper>
-          </Grid>
-          {/* 일별 접속 목적 트렌드 */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📈 일별 접속 목적 트렌드 (최근 7일)
-              </Typography>
-              {accessPurposeAnalytics?.dailyTrends?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300} id="access-purpose-trend-chart">
-                  <AreaChart data={accessPurposeAnalytics.dailyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="day" 
-                      tick={{ fontSize: 12 }}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(label) => `날짜: ${label}`}
-                    />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="purposes.AWS Internal" 
-                      stackId="1"
-                      stroke="#8884d8" 
-                      fill="#8884d8"
-                      name="AWS Internal"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="purposes.고객사 데모 제공" 
-                      stackId="1"
-                      stroke="#82ca9d" 
-                      fill="#82ca9d"
-                      name="고객사 데모 제공"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="purposes.기타" 
-                      stackId="1"
-                      stroke="#ffc658" 
-                      fill="#ffc658"
-                      name="기타"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="purposes.Skipped" 
-                      stackId="1"
-                      stroke="#ff7c7c" 
-                      fill="#ff7c7c"
-                      name="건너뜀"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <Box sx={{ 
-                  height: 300, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="h6">
-                    📭 일별 트렌드 데이터가 없습니다
-                  </Typography>
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* 오늘의 접속 목적 */}
-          <Grid item xs={12} lg={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                📅 오늘의 접속 목적
-              </Typography>
-              {accessPurposeAnalytics?.todayPurposes?.length > 0 ? (
-                <Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    총 {accessPurposeAnalytics.todayTotal}명 방문
-                  </Typography>
-                  <List>
-                    {accessPurposeAnalytics.todayPurposes.map((purpose, index) => (
-                      <ListItem 
-                        key={purpose.purpose} 
-                        sx={{ 
-                          py: 1,
-                          backgroundColor: purpose.purpose === 'Skipped' ? 'rgba(255, 107, 107, 0.1)' : 'transparent',
-                          borderRadius: purpose.purpose === 'Skipped' ? 1 : 0,
-                          border: purpose.purpose === 'Skipped' ? '1px solid rgba(255, 107, 107, 0.3)' : 'none',
-                          mb: purpose.purpose === 'Skipped' ? 1 : 0
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <Box 
-                            sx={{ 
-                              width: 12, 
-                              height: 12, 
-                              borderRadius: '50%', 
-                              backgroundColor: getPurposeColor(purpose.purpose, index),
-                              mr: 2
-                            }} 
-                          />
-                          <Typography 
-                            variant="body1" 
-                            sx={{ 
-                              flexGrow: 1,
-                              color: purpose.purpose === 'Skipped' ? '#ff6b6b' : 'inherit',
-                              fontWeight: purpose.purpose === 'Skipped' ? 'medium' : 'normal'
-                            }}
-                          >
-                            {purpose.purpose === 'Skipped' ? '⏭️ 목적 선택 건너뜀' : purpose.purpose}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Chip 
-                              label={`${purpose.count}명`} 
-                              size="small" 
-                              variant="outlined"
-                              color={purpose.purpose === 'Skipped' ? 'error' : 'default'}
-                            />
-                            <Chip 
-                              label={`${purpose.percentage}%`} 
-                              size="small" 
-                              color={purpose.purpose === 'Skipped' ? 'error' : 'primary'}
-                              variant={purpose.purpose === 'Skipped' ? 'filled' : 'outlined'}
-                            />
-                            {purpose.purpose === 'Skipped' && parseFloat(purpose.percentage) > 30 && (
-                              <Chip 
-                                label="⚠️" 
-                                size="small" 
-                                color="warning"
-                                variant="filled"
-                              />
-                            )}
-                          </Box>
-                        </Box>
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              ) : (
-                <Alert severity="info">
-                  오늘 아직 방문자가 없습니다.
-                </Alert>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* 접속 목적 인사이트 */}
-          <Grid item xs={12} lg={6}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                💡 접속 목적 인사이트
-              </Typography>
-              {accessPurposeAnalytics?.totalPurposes?.length > 0 ? (
-                <Box>
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      주요 방문 목적: {accessPurposeAnalytics.totalPurposes.filter(p => p.purpose !== 'Skipped')[0]?.purpose || '데이터 없음'}
-                    </Typography>
-                    <Typography variant="body2">
-                      전체 방문자의 {accessPurposeAnalytics.totalPurposes.filter(p => p.purpose !== 'Skipped')[0]?.percentage || 0}%가 이 목적으로 방문했습니다.
-                    </Typography>
-                  </Alert>
-                  
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      총 방문자: {accessPurposeAnalytics.totalVisitors}명
-                    </Typography>
-                    <Typography variant="body2">
-                      지금까지 총 {accessPurposeAnalytics.totalVisitors}명이 사이트를 방문했습니다.
-                    </Typography>
-                  </Alert>
-
-                  {/* Skip 통계를 별도로 강조 표시 */}
-                  {(() => {
-                    const skippedData = accessPurposeAnalytics.totalPurposes.find(p => p.purpose === 'Skipped');
-                    return skippedData ? (
-                      <Alert severity="warning" sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          ⏭️ 목적 선택 건너뜀: {skippedData.count}명 ({skippedData.percentage}%)
-                        </Typography>
-                        <Typography variant="body2">
-                          {skippedData.count}명의 사용자가 접속 목적 선택을 건너뛰었습니다.
-                          {skippedData.percentage > 30 && ' 높은 비율입니다. 목적 선택 프로세스 개선을 고려해보세요.'}
-                        </Typography>
-                      </Alert>
-                    ) : (
-                      <Alert severity="success" sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          ✅ 모든 방문자가 목적을 선택했습니다
-                        </Typography>
-                        <Typography variant="body2">
-                          아직 목적 선택을 건너뛴 사용자가 없습니다.
-                        </Typography>
-                      </Alert>
-                    );
-                  })()}
-                </Box>
-              ) : (
-                <Alert severity="info">
-                  아직 충분한 데이터가 수집되지 않았습니다.
                 </Alert>
               )}
             </Paper>

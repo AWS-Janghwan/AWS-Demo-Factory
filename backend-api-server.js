@@ -1066,6 +1066,45 @@ app.post('/api/analytics/track', async (req, res) => {
   }
 });
 
+// 콘텐츠 목록 조회 엔드포인트
+app.get('/api/contents', async (req, res) => {
+  try {
+    console.log('📄 [백엔드] 콘텐츠 목록 조회 시작');
+    
+    // 로컬 AWS credentials 로드
+    const credentials = getLocalCredentials();
+    
+    // DynamoDB 인스턴스 생성
+    const dynamodb = new AWS.DynamoDB.DocumentClient({
+      region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+      sessionToken: credentials.sessionToken
+    });
+    
+    const params = {
+      TableName: 'DemoFactoryContents'
+    };
+    
+    const result = await dynamodb.scan(params).promise();
+    
+    console.log(`✅ [백엔드] 콘텐츠 목록 조회 성공: ${result.Items.length}개`);
+    
+    res.json({
+      success: true,
+      contents: result.Items,
+      count: result.Items.length
+    });
+    
+  } catch (error) {
+    console.error('❌ [백엔드] 콘텐츠 목록 조회 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 분석 데이터 조회 엔드포인트
 app.get('/api/analytics/data', async (req, res) => {
   try {

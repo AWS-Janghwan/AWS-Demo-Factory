@@ -1,14 +1,9 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 
-// Access purposes
+// Access purposes - 실제 모달에서 사용하는 3가지 옵션만 정의
 export const ACCESS_PURPOSES = {
   AWS_INTERNAL: 'aws-internal',
-  CUSTOMER_DEMO: 'customer-demo', 
-  PARTNER_COLLABORATION: 'partner-collaboration',
-  TECHNICAL_EVALUATION: 'technical-evaluation',
-  BUSINESS_DEVELOPMENT: 'business-development',
-  EDUCATION_TRAINING: 'education-training',
-  RESEARCH_DEVELOPMENT: 'research-development',
+  CUSTOMER_DEMO: 'customer-demo',
   OTHER: 'other'
 };
 
@@ -224,34 +219,110 @@ export const AnalyticsProvider = ({ children }) => {
   const skipPurposeSelection = () => {
     console.log('⏭️ 접속 목적 선택 건너뛰기');
     setShowPurposeModal(false);
-    setCurrentAccessPurpose('Unknown');
-    trackVisitorWithPurpose('Unknown');
+    setCurrentAccessPurpose('Skipped');
+    trackVisitorWithPurpose('Skipped');
   };
 
-  // Get analytics summary
-  const getAnalyticsSummary = () => {
+  // Get analytics summary (실시간 데이터 포함)
+  const getAnalyticsSummary = async () => {
+    // 로컬 데이터 계산
     const totalPageViews = Object.values(analytics.pageViews).reduce((sum, views) => sum + views, 0);
     const totalContentViews = Object.values(analytics.contentViews).reduce((sum, content) => sum + content.views, 0);
     const totalCategoryViews = Object.values(analytics.categoryViews).reduce((sum, views) => sum + views, 0);
     
-    return {
+    // DynamoDB에서 실시간 데이터 조회 (비동기)
+    let realTimeData = {
       totalVisitors: analytics.totalVisitors,
       totalPageViews,
       totalContentViews,
       totalCategoryViews,
-      accessPurposes: analytics.accessPurposes,
+      accessPurposes: analytics.accessPurposes
+    };
+    
+    try {
+      const analyticsService = (await import('../services/analyticsService')).default;
+      const dynamoData = await analyticsService.getAnalyticsData();
+      
+      if (dynamoData && dynamoData.length > 0) {
+        // DynamoDB 데이터로 실시간 통계 계산
+        const visitorPurposes = {};
+        let pageViewCount = 0;
+        let contentViewCount = 0;
+        
+        dynamoData.forEach(item => {
+          if (item.eventType === 'visitor_purpose' && item.data.purpose) {
+            visitorPurposes[item.data.purpose] = (visitorPurposes[item.data.purpose] || 0) + 1;
+          } else if (item.eventType === 'page_view') {
+            pageViewCount++;
+          } else if (item.eventType === 'content_view') {
+            contentViewCount++;
+          }
+        });
+        
+        realTimeData = {
+          totalVisitors: Object.values(visitorPurposes).reduce((sum, count) => sum + count, 0),
+          totalPageViews: pageViewCount,
+          totalContentViews: contentViewCount,
+          totalCategoryViews,
+          accessPurposes: visitorPurposes
+        };
+        
+        console.log('📊 [AnalyticsContext] 실시간 데이터 업데이트:', realTimeData);
+      }
+    } catch (error) {
+      console.warn('⚠️ [AnalyticsContext] 실시간 데이터 조회 실패:', error.message);
+    }
+    
+    return {
+      ...realTimeData,
       lastUpdated: new Date().toISOString()
     };
   };
 
-  // Get content analytics
-  const getContentAnalytics = (period = 'all') => {
-    return Object.entries(analytics.contentViews).map(([id, data]) => ({
+  // Get content analytics (실시간 데이터 포함)
+  const getContentAnalytics = async (period = 'all') => {
+    // 로컬 데이터
+    let localContentViews = Object.entries(analytics.contentViews).map(([id, data]) => ({
       id,
       title: data.title,
       views: data.views,
       lastViewed: data.lastViewed
-    })).sort((a, b) => b.views - a.views);
+    }));
+    
+    // DynamoDB에서 실시간 콘텐츠 조회 데이터 조회
+    try {
+      const analyticsService = (await import('../services/analyticsService')).default;
+      const dynamoData = await analyticsService.getAnalyticsData('content_view');
+      
+      if (dynamoData && dynamoData.length > 0) {
+        const contentViewStats = {};
+        
+        dynamoData.forEach(item => {
+          if (item.data.contentId && item.data.contentTitle) {
+            const contentId = item.data.contentId;
+            if (!contentViewStats[contentId]) {
+              contentViewStats[contentId] = {
+                id: contentId,
+                title: item.data.contentTitle,
+                views: 0,
+                lastViewed: item.timestamp
+              };
+            }
+            contentViewStats[contentId].views++;
+            if (new Date(item.timestamp) > new Date(contentViewStats[contentId].lastViewed)) {
+              contentViewStats[contentId].lastViewed = item.timestamp;
+            }
+          }
+        });
+        
+        localContentViews = Object.values(contentViewStats);
+        console.log('📊 [AnalyticsContext] 실시간 콘텐츠 분석 데이터:', localContentViews);
+      }
+    } catch (error) {
+      console.warn('⚠️ [AnalyticsContext] 콘텐츠 분석 데이터 조회 실패:', error.message);
+    }
+    
+    return localContentViews.sort((a, b) => b.views - a.views);
   };
 
   // Get author analytics (placeholder)
@@ -281,16 +352,39 @@ export const AnalyticsProvider = ({ children }) => {
     return [];
   };
 
-  // Get access purpose analytics
-  const getAccessPurposeAnalytics = () => {
-    const totalPurposes = Object.entries(analytics.accessPurposes).map(([purpose, count]) => ({
+  // Get access purpose analytics (실시간 데이터 포함)
+  const getAccessPurposeAnalytics = async () => {
+    let localPurposes = analytics.accessPurposes;
+    
+    // DynamoDB에서 실시간 접속 목적 데이터 조회
+    try {
+      const analyticsService = (await import('../services/analyticsService')).default;
+      const dynamoData = await analyticsService.getAnalyticsData('visitor_purpose');
+      
+      if (dynamoData && dynamoData.length > 0) {
+        const purposeStats = {};
+        
+        dynamoData.forEach(item => {
+          if (item.data.purpose) {
+            purposeStats[item.data.purpose] = (purposeStats[item.data.purpose] || 0) + 1;
+          }
+        });
+        
+        localPurposes = purposeStats;
+        console.log('📊 [AnalyticsContext] 실시간 접속 목적 데이터:', localPurposes);
+      }
+    } catch (error) {
+      console.warn('⚠️ [AnalyticsContext] 접속 목적 데이터 조회 실패:', error.message);
+    }
+    
+    const totalPurposes = Object.entries(localPurposes).map(([purpose, count]) => ({
       purpose,
       count
     }));
     
     return {
       totalPurposes,
-      totalCount: Object.values(analytics.accessPurposes).reduce((sum, count) => sum + count, 0)
+      totalCount: Object.values(localPurposes).reduce((sum, count) => sum + count, 0)
     };
   };
 
@@ -324,6 +418,18 @@ export const AnalyticsProvider = ({ children }) => {
     getTimeAnalytics,
     getHourlyAnalytics,
     getAccessPurposeAnalytics,
+    // 실시간 데이터 새로고침 함수
+    refreshAnalyticsData: async () => {
+      console.log('🔄 [AnalyticsContext] 실시간 데이터 새로고침 시작...');
+      // 이 함수들은 이제 비동기로 DynamoDB 데이터를 가져옴
+      const [summary, contentAnalytics, purposeAnalytics] = await Promise.all([
+        getAnalyticsSummary(),
+        getContentAnalytics(),
+        getAccessPurposeAnalytics()
+      ]);
+      console.log('✅ [AnalyticsContext] 실시간 데이터 새로고침 완료');
+      return { summary, contentAnalytics, purposeAnalytics };
+    },
     clearAnalytics,
     debugCategoryData
   };

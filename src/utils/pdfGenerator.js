@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { safeTranslate } from './koreanFont';
+import { captureChartAsImage, createChartJSImage, createSimpleChart } from './chartToImage';
 
 // 안전한 텍스트 처리 (한글 -> 영어 변환)
 const safeText = (text) => {
@@ -22,30 +23,7 @@ const formatDateTime = () => {
   });
 };
 
-// 차트 캡처 함수
-const captureChart = async (elementId) => {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    console.warn(`Chart element not found: ${elementId}`);
-    return null;
-  }
-  
-  try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-      allowTaint: true,
-      width: element.offsetWidth,
-      height: element.offsetHeight
-    });
-    return canvas.toDataURL('image/png');
-  } catch (error) {
-    console.error('Chart capture error:', error);
-    return null;
-  }
-};
+// 이전 차트 캡처 함수들은 chartToImage.js로 이동됨
 
 // 간단한 차트 그리기 함수 (백업용)
 const drawSimpleChart = (doc, data, x, y, width, height, type = 'bar') => {
@@ -229,32 +207,52 @@ export const generateAnalyticsReport = async (analyticsData) => {
       return currentY + 5;
     };
 
-    // 차트 이미지 추가 함수
+    // 차트 이미지 추가 함수 (개선된 버전 - Chart.js 우선)
     const addChartImage = async (chartId, title, fallbackData, chartType = 'bar') => {
-      checkNewPage(70);
+      checkNewPage(90);
       
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(safeText(title), margin, yPosition);
       yPosition += 10;
       
-      // 실제 차트 캡처 시도
-      const chartImage = await captureChart(chartId);
+      console.log(`📈 Adding chart: ${title} (ID: ${chartId})`);
       
-      if (chartImage) {
-        try {
-          doc.addImage(chartImage, 'PNG', margin, yPosition, contentWidth, 50);
-          yPosition += 60;
-        } catch (error) {
-          console.warn('Chart image addition failed, using simple chart:', error);
-          drawSimpleChart(doc, fallbackData, margin, yPosition, contentWidth, 40, chartType);
-          yPosition += 50;
+      // 전략 변경: Chart.js를 먼저 시도 (더 안정적)
+      try {
+        console.log(`🎨 Using Chart.js-based chart for: ${chartId}`);
+        const chartJSImage = await createChartJSImage(fallbackData, chartType, 600, 400);
+        doc.addImage(chartJSImage, 'PNG', margin, yPosition, contentWidth, 60);
+        yPosition += 70;
+        console.log(`✅ Chart.js chart added successfully: ${chartId}`);
+      } catch (chartJSError) {
+        console.warn(`⚠️ Chart.js failed for ${chartId}, trying DOM capture:`, chartJSError);
+        
+        // Chart.js 실패 시 DOM 차트 캡처 시도
+        const chartImage = await captureChartAsImage(chartId);
+        
+        if (chartImage) {
+          try {
+            doc.addImage(chartImage, 'PNG', margin, yPosition, contentWidth, 70);
+            yPosition += 80;
+            console.log(`✅ DOM chart captured successfully: ${chartId}`);
+          } catch (error) {
+            console.warn(`⚠️ DOM chart failed, using simple chart:`, error);
+            const canvasChart = createSimpleChart(fallbackData, chartType, 600, 400);
+            doc.addImage(canvasChart, 'PNG', margin, yPosition, contentWidth, 60);
+            yPosition += 70;
+          }
+        } else {
+          // 모든 방법 실패 시 간단한 차트 사용
+          console.log(`🎨 Using fallback simple chart for: ${chartId}`);
+          const canvasChart = createSimpleChart(fallbackData, chartType, 600, 400);
+          doc.addImage(canvasChart, 'PNG', margin, yPosition, contentWidth, 60);
+          yPosition += 70;
         }
-      } else {
-        // 차트 캡처 실패 시 간단한 차트 그리기
-        drawSimpleChart(doc, fallbackData, margin, yPosition, contentWidth, 40, chartType);
-        yPosition += 50;
       }
+      
+      // 차트 아래 여백 추가
+      yPosition += 10;
     };
 
     // PDF 생성 시작
@@ -273,22 +271,22 @@ export const generateAnalyticsReport = async (analyticsData) => {
 
       yPosition = drawTable(['Metric', 'Value'], statsData, yPosition);
       
-      // Statistics chart
+      // Statistics chart - 실제 대시보드에서 사용하는 차트 ID 사용
       const chartData = [
         { label: 'Visitors', value: analyticsData.summary.totalVisitors || 0 },
         { label: 'Views', value: analyticsData.summary.totalPageViews || 0 },
         { label: 'Contents', value: analyticsData.summary.totalContents || 0 }
       ];
       
-      await addChartImage('overview-chart', 'Statistics Overview Chart', chartData, 'bar');
+      await addChartImage('daily-trend-chart', 'Daily Trend Chart', chartData, 'bar');
     }
 
     // 2. Access Purpose Analysis + Pie Chart
-    if (analyticsData.accessPurpose?.totalPurposes?.length > 0) {
+    if (analyticsData.accessPurpose?.length > 0) {
       checkNewPage(80);
       addSectionTitle('🎯 Access Purpose Analysis');
       
-      const purposeData = analyticsData.accessPurpose.totalPurposes.map(item => [
+      const purposeData = analyticsData.accessPurpose.map(item => [
         safeText(item.purpose || 'Unknown'),
         item.count?.toString() || '0',
         `${item.percentage || 0}%`
@@ -296,16 +294,16 @@ export const generateAnalyticsReport = async (analyticsData) => {
 
       yPosition = drawTable(['Purpose', 'Visitors', 'Percentage'], purposeData, yPosition);
       
-      // Pie chart
-      const pieData = analyticsData.accessPurpose.totalPurposes.map(item => ({
+      // Pie chart - 실제 대시보드에서 사용하는 차트 ID 사용
+      const pieData = analyticsData.accessPurpose.map(item => ({
         label: item.purpose,
         value: item.count || 0
       }));
       
-      await addChartImage('purpose-pie-chart', 'Access Purpose Distribution', pieData, 'pie');
+      await addChartImage('access-purpose-pie-chart', 'Access Purpose Distribution', pieData, 'pie');
       
       // Key insights
-      if (analyticsData.accessPurpose.totalPurposes.length > 0) {
+      if (analyticsData.accessPurpose.length > 0) {
         yPosition += 5;
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
@@ -313,10 +311,10 @@ export const generateAnalyticsReport = async (analyticsData) => {
         yPosition += 8;
 
         doc.setFontSize(10);
-        const topPurpose = analyticsData.accessPurpose.totalPurposes[0];
+        const topPurpose = analyticsData.accessPurpose[0];
         doc.text(`• Most common access purpose: ${safeText(topPurpose.purpose)} (${topPurpose.percentage}%)`, margin + 5, yPosition);
         yPosition += 6;
-        doc.text(`• Total visitors analyzed: ${analyticsData.accessPurpose.totalVisitors || 0}`, margin + 5, yPosition);
+        doc.text(`• Total visitors analyzed: ${analyticsData.accessPurpose.reduce((sum, item) => sum + (item.count || 0), 0)}`, margin + 5, yPosition);
         yPosition += 15;
       }
     }
@@ -343,26 +341,27 @@ export const generateAnalyticsReport = async (analyticsData) => {
       await addChartImage('content-bar-chart', 'Top Content Views Chart', contentChartData, 'bar');
     }
 
-    // 4. Category Analysis + Pie Chart
+    // 4. Category Analysis + Bar Chart
     if (analyticsData.category?.length > 0) {
       checkNewPage(80);
       addSectionTitle('📂 Category Analysis');
       
       const categoryStats = analyticsData.category.map(item => [
-        safeText(item.category || 'Unknown'),
-        (item.views || 0).toString(),
-        `${item.percentage || 0}%`
+        safeText(item.name || item.category || 'Unknown'),
+        (item.totalViews || item.views || 0).toString(),
+        (item.contentCount || 0).toString(),
+        (item.avgViews || 0).toString()
       ]);
 
-      yPosition = drawTable(['Category', 'Views', 'Percentage'], categoryStats, yPosition);
+      yPosition = drawTable(['Category', 'Total Views', 'Contents', 'Avg Views'], categoryStats, yPosition);
       
-      // Category pie chart
+      // Category bar chart - 실제 대시보드에서 사용하는 차트 ID 사용
       const categoryChartData = analyticsData.category.map(item => ({
-        label: item.category,
-        value: item.views || 0
+        label: item.name || item.category,
+        value: item.totalViews || item.views || 0
       }));
       
-      await addChartImage('category-pie-chart', 'Category Distribution Chart', categoryChartData, 'pie');
+      await addChartImage('category-bar-chart', 'Category Views Distribution Chart', categoryChartData, 'bar');
     }
 
     // 5. Time Analysis + Charts
@@ -384,13 +383,13 @@ export const generateAnalyticsReport = async (analyticsData) => {
 
         yPosition = drawTable(['Date', 'Visitors', 'Page Views'], dailyStats, yPosition);
         
-        // Daily trend chart
+        // Daily trend chart - 실제 대시보드에서 사용하는 차트 ID 사용
         const dailyChartData = analyticsData.time.slice(-7).map(item => ({
           label: item.date,
           value: item.visitors || 0
         }));
         
-        await addChartImage('daily-trend-chart', 'Daily Visitors Trend', dailyChartData, 'bar');
+        await addChartImage('daily-visitors-chart', 'Daily Visitors Trend', dailyChartData, 'bar');
       }
 
       // Hourly analysis

@@ -7,10 +7,40 @@ import { generateAnalyticsInsights } from './bedrockClient';
  * @param {Object} analyticsData - 분석 데이터
  * @returns {Promise<Object>} - AI 인사이트 결과
  */
+// AI 인사이트 캐시 시스템
+const insightsCache = new Map();
+const CACHE_DURATION = 10 * 60 * 1000; // 10분 캐시
+
+// 데이터 해시 생성 (동일한 데이터 식별용)
+const generateDataHash = (data) => {
+  const str = JSON.stringify({
+    totalVisitors: data.summary?.totalVisitors,
+    totalPageViews: data.summary?.totalPageViews,
+    totalContentViews: data.summary?.totalContentViews,
+    contentCount: data.content?.length,
+    categoryCount: data.category?.length,
+    timeRange: data.time?.length
+  });
+  return btoa(str).substring(0, 16); // 간단한 해시
+};
+
 export const generateAIAnalyticsReport = async (analyticsData) => {
   try {
     console.log('🤖 AI 분석 리포트 생성 시작...');
     console.log('📊 입력 데이터:', analyticsData);
+    
+    // 데이터 해시 생성
+    const dataHash = generateDataHash(analyticsData);
+    console.log('🔑 데이터 해시:', dataHash);
+    
+    // 캐시된 AI 인사이트 확인
+    const cached = insightsCache.get(dataHash);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('💾 AI 인사이트 캐시 사용 (Bedrock API 호출 생략)');
+      return cached.data;
+    }
+    
+    console.log('🔄 새로운 AI 인사이트 생성 시도...');
     
     // Bedrock API를 통해 AI 인사이트 생성
     const aiInsights = await generateAnalyticsInsights(analyticsData);
@@ -43,10 +73,20 @@ export const generateAIAnalyticsReport = async (analyticsData) => {
     
     console.log('📋 정규화된 인사이트:', normalizedInsights);
     
-    return {
+    // AI 인사이트 캐시 저장
+    const result = {
       success: true,
       data: normalizedInsights
     };
+    
+    insightsCache.set(dataHash, {
+      data: result,
+      timestamp: Date.now()
+    });
+    
+    console.log('💾 AI 인사이트 캐시 저장 완료');
+    
+    return result;
     
   } catch (error) {
     console.error('❌ AI 분석 리포트 생성 실패:', error);
