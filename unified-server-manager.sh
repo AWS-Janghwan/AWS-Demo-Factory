@@ -97,6 +97,12 @@ start_server() {
     local log_file=$(get_server_log "$server_name")
     local pid_file=$(get_server_pid_file "$server_name")
     
+    # 로그 파일 및 PID 파일 권한 준비
+    touch "$log_file" 2>/dev/null || true
+    chmod 666 "$log_file" 2>/dev/null || true
+    touch "$pid_file" 2>/dev/null || true
+    chmod 666 "$pid_file" 2>/dev/null || true
+    
     if [ -z "$command" ] || [ -z "$port" ]; then
         log_error "알 수 없는 서버: $server_name"
         return 1
@@ -146,7 +152,15 @@ start_server() {
             ;;
     esac
     
-    echo $pid > "$pid_file"
+    # PID 파일 쓰기 (권한 문제 해결)
+    if ! echo $pid > "$pid_file" 2>/dev/null; then
+        log_warning "PID 파일 쓰기 권한 문제 해결 중..."
+        chmod 666 "$pid_file" 2>/dev/null || true
+        echo $pid > "$pid_file" 2>/dev/null || {
+            log_error "PID 파일 쓰기 실패: $pid_file"
+            # PID 파일 없이도 계속 진행
+        }
+    fi
     
     # 서버 시작 확인 (최대 30초 대기)
     local max_attempts=15

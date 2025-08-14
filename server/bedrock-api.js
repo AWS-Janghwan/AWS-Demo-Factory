@@ -1,4 +1,4 @@
-// Amazon Bedrock API 서버 (로컬 credentials 사용)
+// Amazon Bedrock API 서버 (AWS credentials 사용)
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -9,55 +9,20 @@ const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-be
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 로컬 AWS credentials 읽기 함수
-const getLocalCredentials = () => {
+// AWS credentials 로딩 함수 (EC2 인스턴스 프로필 우선)
+const getAWSCredentials = () => {
   try {
-    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
-    const profileName = process.env.AWS_PROFILE || 'default';
-    
-    if (!fs.existsSync(credentialsPath)) {
-      throw new Error(`AWS credentials 파일을 찾을 수 없습니다: ${credentialsPath}`);
+    // 1. EC2 인스턴스 프로필 확인 (배포 환경)
+    if (process.env.NODE_ENV === 'production' || process.env.AWS_EXECUTION_ENV) {
+      console.log('🔐 EC2 인스턴스 프로필 사용 (배포 환경)');
+      return {
+        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+      };
     }
-
-    const content = fs.readFileSync(credentialsPath, 'utf8');
-    const profiles = {};
-    let currentProfile = null;
-
-    content.split('\n').forEach(line => {
-      line = line.trim();
-      
-      if (line.startsWith('[') && line.endsWith(']')) {
-        currentProfile = line.slice(1, -1);
-        profiles[currentProfile] = {};
-      } else if (line.includes('=') && currentProfile) {
-        const [key, value] = line.split('=').map(s => s.trim());
-        profiles[currentProfile][key] = value;
-      }
-    });
-
-    if (!profiles[profileName]) {
-      throw new Error(`AWS 프로필 '${profileName}'을 찾을 수 없습니다`);
-    }
-
-    const profile = profiles[profileName];
     
-    if (!profile.aws_access_key_id || !profile.aws_secret_access_key) {
-      throw new Error('AWS 자격 증명이 완전하지 않습니다');
-    }
-
-    console.log(`✅ AWS 자격 증명 로드 성공 (프로필: ${profileName})`);
-    
-    return {
-      accessKeyId: profile.aws_access_key_id,
-      secretAccessKey: profile.aws_secret_access_key,
-      region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
-    };
-  } catch (error) {
-    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
-    
-    // 환경 변수 fallback
+    // 2. 환경 변수 확인
     if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      console.log('⚠️ 환경 변수에서 AWS 자격 증명 사용');
+      console.log('🔐 환경 변수에서 AWS 자격 증명 사용');
       return {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -65,7 +30,49 @@ const getLocalCredentials = () => {
       };
     }
     
-    throw error;
+    // 3. 로컬 credentials 파일 확인 (개발 환경)
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const profileName = process.env.AWS_PROFILE || 'default';
+    
+    if (fs.existsSync(credentialsPath)) {
+      const content = fs.readFileSync(credentialsPath, 'utf8');
+      const profiles = {};
+      let currentProfile = null;
+
+      content.split('\n').forEach(line => {
+        line = line.trim();
+        
+        if (line.startsWith('[') && line.endsWith(']')) {
+          currentProfile = line.slice(1, -1);
+          profiles[currentProfile] = {};
+        } else if (line.includes('=') && currentProfile) {
+          const [key, value] = line.split('=').map(s => s.trim());
+          profiles[currentProfile][key] = value;
+        }
+      });
+
+      if (profiles[profileName] && profiles[profileName].aws_access_key_id) {
+        console.log(`🔐 로컬 credentials 파일 사용 (프로필: ${profileName})`);
+        return {
+          accessKeyId: profiles[profileName].aws_access_key_id,
+          secretAccessKey: profiles[profileName].aws_secret_access_key,
+          region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+        };
+      }
+    }
+    
+    // 4. 기본 AWS SDK 설정 사용 (EC2 인스턴스 프로필 등)
+    console.log('🔐 기본 AWS SDK 설정 사용 (인스턴스 프로필 등)');
+    return {
+      region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+    };
+    
+  } catch (error) {
+    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
+    // 기본 설정으로 fallback
+    return {
+      region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+    };
   }
 };
 
@@ -78,24 +85,38 @@ const initializeBedrockClient = () => {
   try {
     console.log('🔐 Bedrock 클라이언트 초기화 중...');
     
-    const credentials = getLocalCredentials();
+    const credentials = getAWSCredentials();
     
-    bedrockClient = new BedrockRuntimeClient({
-      region: credentials.region,
-      credentials: {
-        accessKeyId: credentials.accessKeyId,
-        secretAccessKey: credentials.secretAccessKey
-      }
-    });
+    // credentials에 accessKeyId가 있으면 명시적 설정
+    if (credentials.accessKeyId) {
+      bedrockClient = new BedrockRuntimeClient({
+        region: credentials.region,
+        credentials: {
+          accessKeyId: credentials.accessKeyId,
+          secretAccessKey: credentials.secretAccessKey
+        }
+      });
+      console.log('✅ 명시적 AWS 자격 증명으로 Bedrock 클라이언트 초기화 완료');
+    } else {
+      // EC2 인스턴스 프로필 사용
+      bedrockClient = new BedrockRuntimeClient({
+        region: credentials.region
+        // credentials 생략 시 AWS SDK가 자동으로 인스턴스 프로필 사용
+      });
+      console.log('✅ EC2 인스턴스 프로필로 Bedrock 클라이언트 초기화 완료');
+    }
     
     console.log('✅ Bedrock 클라이언트 초기화 완료:', {
-      region: credentials.region
+      region: credentials.region,
+      credentialType: credentials.accessKeyId ? 'explicit' : 'instance-profile'
     });
     
     return bedrockClient;
   } catch (error) {
     console.error('❌ Bedrock 클라이언트 초기화 실패:', error);
-    throw error;
+    // 오류가 발생해도 서버는 시작하도록 함
+    console.log('⚠️ Bedrock 초기화 실패했지만 서버를 계속 시작합니다...');
+    return null;
   }
 };
 

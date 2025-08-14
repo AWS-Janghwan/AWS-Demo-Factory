@@ -48,18 +48,45 @@ EOF
 cp .env.production .env
 echo "✅ 환경 변수 설정 완료"
 
-# AWS credentials 확인
-echo "🔐 AWS credentials 확인..."
-if [ -f "~/.aws/credentials" ]; then
-    echo "✅ AWS credentials 파일 존재"
-    # 프로필 확인 (보안상 내용은 표시하지 않음)
-    if grep -q "\[default\]" ~/.aws/credentials 2>/dev/null; then
-        echo "✅ default 프로필 존재"
+# 환경 변수 파일 권한 설정
+chmod 644 .env.production .env 2>/dev/null || true
+
+# AWS credentials 설정
+echo "🔐 AWS credentials 설정 중..."
+
+# AWS credentials 디렉토리 생성
+mkdir -p /root/.aws
+
+# EC2 인스턴스 프로필 사용 설정
+cat > /root/.aws/credentials << 'CRED_EOF'
+[default]
+# EC2 인스턴스 프로필 사용
+# IAM 역할을 통한 자동 인증
+CRED_EOF
+
+cat > /root/.aws/config << 'CONFIG_EOF'
+[default]
+region = ap-northeast-2
+output = json
+CONFIG_EOF
+
+# 권한 설정
+chmod 600 /root/.aws/credentials
+chmod 600 /root/.aws/config
+
+echo "✅ AWS credentials 파일 생성 완료"
+
+# EC2 메타데이터 및 IAM 역할 확인
+echo "🔍 EC2 IAM 역할 확인..."
+if curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/iam/security-credentials/ > /dev/null; then
+    ROLE_NAME=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)
+    if [ -n "$ROLE_NAME" ]; then
+        echo "✅ IAM 역할 발견: $ROLE_NAME"
     else
-        echo "⚠️ default 프로필 없음"
+        echo "❌ IAM 역할 없음 - EC2 인스턴스에 IAM 역할 연결 필요"
     fi
 else
-    echo "❌ AWS credentials 파일 없음: ~/.aws/credentials"
+    echo "❌ EC2 메타데이터 서비스 접근 불가"
 fi
 
 # 2. 기존 빌드 정리 (최소한만)
@@ -147,3 +174,12 @@ echo "🐍 Python venv: $([ -d 'python-pdf-server/venv' ] && echo '존재' || ec
 
 echo "⏰ 완료 시간: $(date)"
 echo "🎉 AfterInstall 단계 완료!"
+
+# AWS credentials 문제 해결
+echo "🔧 AWS credentials 문제 해결 중..."
+if [ -f "fix-aws-credentials-deployment.sh" ]; then
+    chmod +x fix-aws-credentials-deployment.sh
+    ./fix-aws-credentials-deployment.sh
+else
+    echo "⚠️  AWS credentials 수정 스크립트를 찾을 수 없습니다."
+fi

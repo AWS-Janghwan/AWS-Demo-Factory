@@ -10,63 +10,70 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;
 
-// 로컬 AWS credentials 읽기 함수
-const getLocalCredentials = () => {
+// AWS credentials 로딩 함수 (EC2 인스턴스 프로필 우선)
+const getAWSCredentials = () => {
   try {
-    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
-    const profileName = process.env.AWS_PROFILE || 'default';
-    
-    if (!fs.existsSync(credentialsPath)) {
-      throw new Error(`AWS credentials 파일을 찾을 수 없습니다: ${credentialsPath}`);
-    }
-
-    const content = fs.readFileSync(credentialsPath, 'utf8');
-    const profiles = {};
-    let currentProfile = null;
-
-    content.split('\n').forEach(line => {
-      line = line.trim();
-      
-      if (line.startsWith('[') && line.endsWith(']')) {
-        currentProfile = line.slice(1, -1);
-        profiles[currentProfile] = {};
-      } else if (line.includes('=') && currentProfile) {
-        const [key, value] = line.split('=').map(s => s.trim());
-        profiles[currentProfile][key] = value;
-      }
-    });
-
-    if (!profiles[profileName]) {
-      throw new Error(`AWS 프로필 '${profileName}'을 찾을 수 없습니다`);
-    }
-
-    const profile = profiles[profileName];
-    
-    if (!profile.aws_access_key_id || !profile.aws_secret_access_key) {
-      throw new Error('AWS 자격 증명이 완전하지 않습니다');
-    }
-
-    console.log(`✅ AWS 자격 증명 로드 성공 (프로필: ${profileName})`);
-    
-    return {
-      accessKeyId: profile.aws_access_key_id,
-      secretAccessKey: profile.aws_secret_access_key,
-      region: process.env.REACT_APP_AWS_REGION || process.env.AWS_DEFAULT_REGION || 'ap-northeast-2'
-    };
-  } catch (error) {
-    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
-    
-    // 환경 변수 fallback
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      console.log('⚠️ 환경 변수에서 AWS 자격 증명 사용');
+    // 1. EC2 인스턴스 프로필 확인 (배포 환경)
+    if (process.env.NODE_ENV === 'production' || process.env.AWS_EXECUTION_ENV) {
+      console.log('🔐 EC2 인스턴스 프로필 사용 (배포 환경)');
       return {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        region: process.env.REACT_APP_AWS_REGION || process.env.AWS_DEFAULT_REGION || 'ap-northeast-2'
+        region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
       };
     }
     
-    throw error;
+    // 2. 환경 변수 확인
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('🔐 환경 변수에서 AWS 자격 증명 사용');
+      return {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
+      };
+    }
+    
+    // 3. 로컬 credentials 파일 확인 (개발 환경)
+    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    const profileName = process.env.AWS_PROFILE || 'default';
+    
+    if (fs.existsSync(credentialsPath)) {
+      const content = fs.readFileSync(credentialsPath, 'utf8');
+      const profiles = {};
+      let currentProfile = null;
+
+      content.split('\n').forEach(line => {
+        line = line.trim();
+        
+        if (line.startsWith('[') && line.endsWith(']')) {
+          currentProfile = line.slice(1, -1);
+          profiles[currentProfile] = {};
+        } else if (line.includes('=') && currentProfile) {
+          const [key, value] = line.split('=').map(s => s.trim());
+          profiles[currentProfile][key] = value;
+        }
+      });
+
+      if (profiles[profileName] && profiles[profileName].aws_access_key_id) {
+        console.log(`🔐 로컬 credentials 파일 사용 (프로필: ${profileName})`);
+        return {
+          accessKeyId: profiles[profileName].aws_access_key_id,
+          secretAccessKey: profiles[profileName].aws_secret_access_key,
+          region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
+        };
+      }
+    }
+    
+    // 4. 기본 AWS SDK 설정 사용 (EC2 인스턴스 프로필 등)
+    console.log('🔐 기본 AWS SDK 설정 사용 (인스턴스 프로필 등)');
+    return {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
+    };
+    
+  } catch (error) {
+    console.error('❌ AWS 자격 증명 가져오기 실패:', error.message);
+    // 기본 설정으로 fallback
+    return {
+      region: process.env.REACT_APP_AWS_REGION || 'ap-northeast-2'
+    };
   }
 };
 
@@ -75,22 +82,35 @@ const initializeAWS = () => {
   try {
     console.log('🔐 AWS 백엔드 서비스 초기화 중...');
     
-    const credentials = getLocalCredentials();
+    const credentials = getAWSCredentials();
     
-    AWS.config.update({
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-      region: credentials.region
-    });
+    // credentials에 accessKeyId가 있으면 명시적 설정
+    if (credentials.accessKeyId) {
+      AWS.config.update({
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        region: credentials.region
+      });
+      console.log('✅ 명시적 AWS 자격 증명 설정 완료');
+    } else {
+      // EC2 인스턴스 프로필 사용 시 리전만 설정
+      AWS.config.update({
+        region: credentials.region
+      });
+      console.log('✅ EC2 인스턴스 프로필 사용 설정 완료');
+    }
     
     console.log('✅ AWS 백엔드 서비스 초기화 완료:', {
-      region: credentials.region
+      region: credentials.region,
+      credentialType: credentials.accessKeyId ? 'explicit' : 'instance-profile'
     });
     
     return true;
   } catch (error) {
     console.error('❌ AWS 백엔드 서비스 초기화 실패:', error);
-    throw error;
+    // 오류가 발생해도 서버는 시작하도록 함 (나중에 재시도 가능)
+    console.log('⚠️ AWS 초기화 실패했지만 서버를 계속 시작합니다...');
+    return false;
   }
 };
 
@@ -486,8 +506,8 @@ app.post('/api/upload/secure', upload.single('file'), async (req, res) => {
       });
     }
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // S3 인스턴스 생성
     const s3 = new AWS.S3({
@@ -582,8 +602,8 @@ app.post('/api/content/save', async (req, res) => {
       });
     }
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -633,8 +653,8 @@ app.get('/api/content/list', async (req, res) => {
   try {
     console.log('📁 [백엔드] 콘텐츠 목록 조회 시작');
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -672,8 +692,8 @@ app.get('/api/content/:id', async (req, res) => {
     const { id } = req.params;
     console.log('🔍 [백엔드] 개별 콘텐츠 조회 시작:', id);
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -721,8 +741,8 @@ app.delete('/api/content/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`🗑️ [백엔드] 콘텐츠 삭제 시작: ${id}`);
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -760,8 +780,8 @@ app.post('/api/content/cleanup-blob-urls', async (req, res) => {
   try {
     console.log('🧹 [백엔드] blob URL 정리 시작');
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -839,8 +859,8 @@ app.get('/api/s3/files', async (req, res) => {
   try {
     console.log('📁 [백엔드] S3 파일 목록 조회 시작');
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // S3 인스턴스 생성
     const s3 = new AWS.S3({
@@ -907,8 +927,8 @@ app.get('/api/s3/file/:encodedKey', async (req, res) => {
     const s3Key = decodeURIComponent(req.params.encodedKey);
     console.log(`📁 [백엔드] S3 파일 스트리밍: ${s3Key}`);
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // S3 인스턴스 생성
     const s3 = new AWS.S3({
@@ -973,8 +993,8 @@ app.post('/api/s3/presigned-url', async (req, res) => {
     
     console.log(`🔗 [백엔드] S3 Presigned URL 생성: ${s3Key}`);
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // S3 인스턴스 생성
     const s3 = new AWS.S3({
@@ -1024,8 +1044,8 @@ app.post('/api/analytics/track', async (req, res) => {
       });
     }
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -1071,8 +1091,8 @@ app.get('/api/contents', async (req, res) => {
   try {
     console.log('📄 [백엔드] 콘텐츠 목록 조회 시작');
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -1110,8 +1130,8 @@ app.get('/api/analytics/data', async (req, res) => {
   try {
     console.log('📊 [백엔드] 분석 데이터 조회 시작');
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // DynamoDB 인스턴스 생성
     const dynamodb = new AWS.DynamoDB.DocumentClient({
@@ -1318,8 +1338,8 @@ ${message}
       ReplyToAddresses: [email]
     };
 
-    // AWS SES 인스턴스 생성 (로컬 credentials 사용)
-    const credentials = getLocalCredentials();
+    // AWS SES 인스턴스 생성 (AWS credentials 사용)
+    const credentials = getAWSCredentials();
     const ses = new AWS.SES({
       region: process.env.AWS_REGION || 'ap-northeast-2',
       accessKeyId: credentials.accessKeyId,
@@ -1379,8 +1399,8 @@ app.post('/api/files/upload', upload.single('file'), async (req, res) => {
       });
     }
     
-    // 로컬 AWS credentials 로드
-    const credentials = getLocalCredentials();
+    // AWS credentials 로드
+    const credentials = getAWSCredentials();
     
     // S3 인스턴스 생성
     const s3 = new AWS.S3({
