@@ -1381,8 +1381,9 @@ ${message}
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend API server running on port ${PORT}`);
+  console.log(`🌐 External access: http://0.0.0.0:${PORT}`);
 });
 
 module.exports = app;

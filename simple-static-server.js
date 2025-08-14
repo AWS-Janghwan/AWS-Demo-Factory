@@ -176,10 +176,10 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Simple static server running on port ${PORT}`);
   console.log(`📁 Serving files from: ${BUILD_DIR}`);
-  console.log(`🌐 Access your app at: http://localhost:${PORT}`);
+  console.log(`🌐 Access your app at: http://0.0.0.0:${PORT}`);
   console.log(`📄 Index.html exists: ${fs.existsSync(path.join(BUILD_DIR, 'index.html'))}`);
 });
 

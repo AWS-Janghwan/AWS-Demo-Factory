@@ -62,18 +62,6 @@ const getAWSCredentials = () => {
         region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
       };
     }
-        }
-      });
-
-      if (profiles[profileName] && profiles[profileName].aws_access_key_id) {
-        console.log(`🔐 로컬 credentials 파일 사용 (프로필: ${profileName})`);
-        return {
-          accessKeyId: profiles[profileName].aws_access_key_id,
-          secretAccessKey: profiles[profileName].aws_secret_access_key,
-          region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
-        };
-      }
-    }
     
     // 4. 기본 AWS SDK 설정 사용 (EC2 인스턴스 프로필 등)
     console.log('🔐 기본 AWS SDK 설정 사용 (인스턴스 프로필 등)');
