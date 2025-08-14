@@ -9,29 +9,13 @@ const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-be
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// AWS credentials 로딩 함수 (EC2 인스턴스 프로필 우선)
+// AWS credentials 로딩 함수 (로컬 credentials 우선)
 const getAWSCredentials = () => {
   try {
-    // 1. EC2 인스턴스 프로필 확인 (배포 환경)
-    if (process.env.NODE_ENV === 'production' || process.env.AWS_EXECUTION_ENV) {
-      console.log('🔐 EC2 인스턴스 프로필 사용 (배포 환경)');
-      return {
-        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
-      };
-    }
-    
-    // 2. 환경 변수 확인
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      console.log('🔐 환경 변수에서 AWS 자격 증명 사용');
-      return {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
-      };
-    }
-    
-    // 3. 로컬 credentials 파일 확인 (개발 환경)
-    const credentialsPath = path.join(os.homedir(), '.aws', 'credentials');
+    // 1. 로컬 credentials 파일 우선 확인 (배포 환경: /data/.aws/credentials, 로컬: ~/.aws/credentials)
+    const credentialsPath = process.env.NODE_ENV === 'production' 
+      ? '/data/.aws/credentials'
+      : path.join(os.homedir(), '.aws', 'credentials');
     const profileName = process.env.AWS_PROFILE || 'default';
     
     if (fs.existsSync(credentialsPath)) {
@@ -48,6 +32,36 @@ const getAWSCredentials = () => {
         } else if (line.includes('=') && currentProfile) {
           const [key, value] = line.split('=').map(s => s.trim());
           profiles[currentProfile][key] = value;
+        }
+      });
+
+      if (profiles[profileName] && profiles[profileName].aws_access_key_id) {
+        console.log(`🔐 로컬 credentials 파일 사용 (프로필: ${profileName})`);
+        return {
+          accessKeyId: profiles[profileName].aws_access_key_id,
+          secretAccessKey: profiles[profileName].aws_secret_access_key,
+          region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+        };
+      }
+    }
+    
+    // 2. 환경 변수 확인
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('🔐 환경 변수에서 AWS 자격 증명 사용');
+      return {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+      };
+    }
+    
+    // 3. EC2 인스턴스 프로필 확인 (배포 환경)
+    if (process.env.NODE_ENV === 'production' || process.env.AWS_EXECUTION_ENV) {
+      console.log('🔐 EC2 인스턴스 프로필 사용 (배포 환경)');
+      return {
+        region: process.env.AWS_DEFAULT_REGION || 'us-west-2'
+      };
+    }
         }
       });
 

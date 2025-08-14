@@ -54,39 +54,46 @@ chmod 644 .env.production .env 2>/dev/null || true
 # AWS credentials 설정
 echo "🔐 AWS credentials 설정 중..."
 
-# AWS credentials 디렉토리 생성
-mkdir -p /root/.aws
+# AWS credentials 디렉토리 생성 (배포 환경: /data/.aws)
+mkdir -p /data/.aws
 
-# EC2 인스턴스 프로필 사용 설정
-cat > /root/.aws/credentials << 'CRED_EOF'
+# 실제 AWS credentials 파일 확인 및 설정
+if [ -f "/data/.aws/credentials" ] && grep -q "aws_access_key_id" /data/.aws/credentials; then
+    echo "✅ 기존 AWS credentials 파일 발견: /data/.aws/credentials"
+else
+    echo "⚠️  AWS credentials 파일이 없거나 불완전합니다."
+    echo "📝 기본 credentials 파일 생성: /data/.aws/credentials"
+    cat > /data/.aws/credentials << 'CRED_EOF'
 [default]
-# EC2 인스턴스 프로필 사용
-# IAM 역할을 통한 자동 인증
+# 실제 AWS Access Key ID와 Secret Access Key를 설정하세요
+# aws_access_key_id = YOUR_ACCESS_KEY_ID
+# aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
 CRED_EOF
+fi
 
-cat > /root/.aws/config << 'CONFIG_EOF'
+cat > /data/.aws/config << 'CONFIG_EOF'
 [default]
 region = ap-northeast-2
 output = json
 CONFIG_EOF
 
 # 권한 설정
-chmod 600 /root/.aws/credentials
-chmod 600 /root/.aws/config
+chmod 600 /data/.aws/credentials
+chmod 600 /data/.aws/config
 
 echo "✅ AWS credentials 파일 생성 완료"
 
-# EC2 메타데이터 및 IAM 역할 확인
-echo "🔍 EC2 IAM 역할 확인..."
-if curl -s --connect-timeout 5 http://169.254.169.254/latest/meta-data/iam/security-credentials/ > /dev/null; then
-    ROLE_NAME=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)
-    if [ -n "$ROLE_NAME" ]; then
-        echo "✅ IAM 역할 발견: $ROLE_NAME"
+# AWS credentials 파일 상태 확인
+echo "🔍 AWS credentials 상태 확인..."
+if [ -f "/data/.aws/credentials" ]; then
+    if grep -q "aws_access_key_id" /data/.aws/credentials && ! grep -q "YOUR_ACCESS_KEY_ID" /data/.aws/credentials; then
+        echo "✅ AWS credentials 설정 완료: /data/.aws/credentials"
     else
-        echo "❌ IAM 역할 없음 - EC2 인스턴스에 IAM 역할 연결 필요"
+        echo "⚠️  AWS credentials 수동 설정 필요: /data/.aws/credentials"
+        echo "   현재 파일에 실제 자격 증명을 입력해주세요."
     fi
 else
-    echo "❌ EC2 메타데이터 서비스 접근 불가"
+    echo "❌ AWS credentials 파일 없음: /data/.aws/credentials"
 fi
 
 # 2. 기존 빌드 정리 (최소한만)
@@ -175,11 +182,21 @@ echo "🐍 Python venv: $([ -d 'python-pdf-server/venv' ] && echo '존재' || ec
 echo "⏰ 완료 시간: $(date)"
 echo "🎉 AfterInstall 단계 완료!"
 
+# 배포 환경 권한 및 credentials 문제 해결
+echo "🔧 배포 환경 문제 해결 중..."
+
+# 권한 문제 해결
+if [ -f "fix-deployment-permissions.sh" ]; then
+    chmod +x fix-deployment-permissions.sh
+    ./fix-deployment-permissions.sh
+else
+    echo "⚠️  권한 수정 스크립트를 찾을 수 없습니다."
+fi
+
 # AWS credentials 문제 해결
-echo "🔧 AWS credentials 문제 해결 중..."
-if [ -f "fix-aws-credentials-deployment.sh" ]; then
-    chmod +x fix-aws-credentials-deployment.sh
-    ./fix-aws-credentials-deployment.sh
+if [ -f "fix-deployment-credentials.sh" ]; then
+    chmod +x fix-deployment-credentials.sh
+    ./fix-deployment-credentials.sh
 else
     echo "⚠️  AWS credentials 수정 스크립트를 찾을 수 없습니다."
 fi

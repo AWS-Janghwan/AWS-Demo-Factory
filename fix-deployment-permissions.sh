@@ -1,95 +1,109 @@
 #!/bin/bash
 
-echo "🔧 배포 환경 권한 문제 해결 중..."
+# 배포 환경 권한 문제 해결 스크립트
 
-cd /data/AWS-Demo-Factory
+echo "🔧 배포 환경 권한 문제 해결 시작..."
 
-# 1. 디렉토리 생성 및 권한 설정
-echo "📁 디렉토리 생성 및 권한 설정..."
-mkdir -p pids logs
-chown -R ec2-user:ec2-user pids logs 2>/dev/null || true
-chmod 755 pids logs
+# 현재 사용자 확인
+echo "👤 현재 사용자: $(whoami)"
+echo "📁 현재 디렉토리: $(pwd)"
 
-# 2. 기존 PID 파일 정리
-echo "🧹 기존 PID 파일 정리..."
-rm -f pids/*.pid 2>/dev/null || true
+# 1. 로그 디렉토리 및 파일 권한 설정
+echo "📝 로그 파일 권한 설정 중..."
+mkdir -p logs pids
+chmod 755 logs pids
 
-# 3. 로그 파일 생성 및 권한
-echo "📄 로그 파일 생성 및 권한 설정..."
+# 로그 파일들 생성 및 권한 설정
 touch logs/static.log logs/backend.log logs/bedrock.log logs/pdf.log
 chmod 666 logs/*.log
-chown ec2-user:ec2-user logs/*.log 2>/dev/null || true
 
-# 4. 스크립트 실행 권한
-echo "🔐 스크립트 실행 권한 설정..."
-chmod +x *.sh scripts/*.sh 2>/dev/null || true
+# PID 파일들 권한 설정
+touch pids/static.pid pids/backend.pid pids/bedrock.pid pids/pdf.pid
+chmod 666 pids/*.pid
 
-# 5. 모든 서버 프로세스 강제 종료
-echo "🛑 기존 서버 프로세스 강제 종료..."
-pkill -f "simple-static-server.js" 2>/dev/null || true
-pkill -f "backend-api-server.js" 2>/dev/null || true
-pkill -f "bedrock-api.js" 2>/dev/null || true
-pkill -f "python.*app.py" 2>/dev/null || true
+echo "✅ 로그 및 PID 파일 권한 설정 완료"
 
-# 잠시 대기
-sleep 3
+# 2. 스크립트 실행 권한 설정
+echo "🔐 스크립트 실행 권한 설정 중..."
+chmod +x *.sh
+chmod +x scripts/*.sh
+chmod +x unified-server-manager.sh
 
-# 6. 포트 사용 확인 및 정리
+echo "✅ 스크립트 실행 권한 설정 완료"
+
+# 3. Node.js 서버 파일 권한 설정
+echo "⚙️ Node.js 서버 파일 권한 설정 중..."
+chmod 644 *.js
+chmod 644 server/*.js
+
+echo "✅ Node.js 서버 파일 권한 설정 완료"
+
+# 4. Python 가상환경 권한 설정
+echo "🐍 Python 환경 권한 설정 중..."
+if [ -d "python-pdf-server/venv" ]; then
+    chmod -R 755 python-pdf-server/venv
+    echo "✅ Python 가상환경 권한 설정 완료"
+else
+    echo "⚠️  Python 가상환경이 없습니다."
+fi
+
+# 5. 빌드 파일 권한 설정
+echo "📦 빌드 파일 권한 설정 중..."
+if [ -d "build" ]; then
+    chmod -R 644 build/
+    find build -type d -exec chmod 755 {} \;
+    echo "✅ 빌드 파일 권한 설정 완료"
+else
+    echo "⚠️  빌드 디렉토리가 없습니다."
+fi
+
+# 6. 환경 변수 파일 권한 설정
+echo "🌍 환경 변수 파일 권한 설정 중..."
+chmod 644 .env* 2>/dev/null || true
+echo "✅ 환경 변수 파일 권한 설정 완료"
+
+# 7. AWS credentials 권한 설정
+echo "🔐 AWS credentials 권한 설정 중..."
+if [ -d "/root/.aws" ]; then
+    chmod 700 /root/.aws
+    chmod 600 /root/.aws/* 2>/dev/null || true
+    echo "✅ AWS credentials 권한 설정 완료"
+else
+    echo "⚠️  AWS credentials 디렉토리가 없습니다."
+fi
+
+# 8. 포트 사용 상태 확인
 echo "🔍 포트 사용 상태 확인..."
 for port in 3000 3001 5001 5002; do
-    if lsof -ti:$port > /dev/null 2>&1; then
-        echo "⚠️  포트 $port 사용 중 - 프로세스 종료 시도"
-        lsof -ti:$port | xargs kill -9 2>/dev/null || true
-    fi
-done
-
-echo "✅ 권한 및 프로세스 정리 완료"
-
-# 7. 서버 개별 시작 (권한 문제 우회)
-echo "🚀 서버 개별 시작..."
-
-# 정적 서버 시작
-echo "📱 정적 서버 시작 (3000 포트)..."
-nohup node simple-static-server.js > logs/static.log 2>&1 &
-STATIC_PID=$!
-echo $STATIC_PID > pids/static.pid
-echo "✅ 정적 서버 PID: $STATIC_PID"
-
-# 백엔드 API 서버 시작
-echo "🔌 백엔드 API 서버 시작 (3001 포트)..."
-nohup node backend-api-server.js > logs/backend.log 2>&1 &
-BACKEND_PID=$!
-echo $BACKEND_PID > pids/backend.pid
-echo "✅ 백엔드 서버 PID: $BACKEND_PID"
-
-# Bedrock API 서버 시작
-echo "🤖 Bedrock API 서버 시작 (5001 포트)..."
-nohup node server/bedrock-api.js > logs/bedrock.log 2>&1 &
-BEDROCK_PID=$!
-echo $BEDROCK_PID > pids/bedrock.pid
-echo "✅ Bedrock 서버 PID: $BEDROCK_PID"
-
-# Python PDF 서버 시작
-echo "📄 Python PDF 서버 시작 (5002 포트)..."
-cd python-pdf-server
-source venv/bin/activate 2>/dev/null || true
-nohup python app.py > ../logs/pdf.log 2>&1 &
-PDF_PID=$!
-echo $PDF_PID > ../pids/pdf.pid
-cd ..
-echo "✅ PDF 서버 PID: $PDF_PID"
-
-# 8. 서버 시작 대기 및 상태 확인
-echo "⏳ 서버 초기화 대기 (15초)..."
-sleep 15
-
-echo "🔍 서버 상태 확인..."
-for port in 3000 3001 5001 5002; do
-    if lsof -i:$port > /dev/null 2>&1; then
-        echo "✅ 포트 $port: 실행 중"
+    if netstat -tuln 2>/dev/null | grep -q ":$port "; then
+        echo "⚠️  포트 $port 이미 사용 중"
+        # 기존 프로세스 종료
+        pkill -f ":$port" 2>/dev/null || true
     else
-        echo "❌ 포트 $port: 중지됨"
+        echo "✅ 포트 $port 사용 가능"
     fi
 done
 
-echo "🎉 배포 환경 권한 문제 해결 완료!"
+# 9. 프로세스 정리
+echo "🧹 기존 프로세스 정리 중..."
+pkill -f "node.*backend-api-server" 2>/dev/null || true
+pkill -f "node.*bedrock-api" 2>/dev/null || true
+pkill -f "node.*simple-static-server" 2>/dev/null || true
+pkill -f "python.*pdf-server" 2>/dev/null || true
+
+sleep 2
+
+echo "✅ 기존 프로세스 정리 완료"
+
+# 10. 최종 상태 확인
+echo "🔍 최종 권한 상태 확인..."
+echo "📝 로그 디렉토리: $(ls -ld logs 2>/dev/null || echo '없음')"
+echo "🔐 스크립트 권한: $(ls -l unified-server-manager.sh 2>/dev/null | cut -d' ' -f1 || echo '없음')"
+echo "🌍 환경 파일: $(ls -l .env 2>/dev/null | cut -d' ' -f1 || echo '없음')"
+
+echo "🎯 배포 환경 권한 문제 해결 완료!"
+echo ""
+echo "📋 다음 단계:"
+echo "1. AWS credentials 설정: vi /root/.aws/credentials"
+echo "2. 서버 시작: ./unified-server-manager.sh start"
+echo "3. 상태 확인: ./unified-server-manager.sh status"
