@@ -490,3 +490,5 @@ sessions/
 .sessions
 cache/
 .cache-*
+# Project history file (contains development notes)
+History.md
