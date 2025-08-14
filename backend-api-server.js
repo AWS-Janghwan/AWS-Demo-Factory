@@ -923,7 +923,7 @@ app.get('/api/s3/files', async (req, res) => {
   }
 });
 
-// S3 파일 직접 스트리밍 엔드포인트
+// S3 파일 직접 스트리밍 엔드포인트 (Range 요청 지원)
 app.get('/api/s3/file/:encodedKey', async (req, res) => {
   try {
     const s3Key = decodeURIComponent(req.params.encodedKey);
@@ -947,27 +947,75 @@ app.get('/api/s3/file/:encodedKey', async (req, res) => {
     
     // S3 객체 메타데이터 가져오기
     const headResult = await s3.headObject(params).promise();
+    const fileSize = headResult.ContentLength;
+    const contentType = headResult.ContentType || 'application/octet-stream';
     
-    // 적절한 Content-Type 설정
-    res.set({
-      'Content-Type': headResult.ContentType || 'application/octet-stream',
-      'Content-Length': headResult.ContentLength,
-      'Cache-Control': 'public, max-age=31536000', // 1년 캐시
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    // Range 요청 처리 (비디오 시킹을 위해 필수)
+    const range = req.headers.range;
     
-    // S3 객체 스트리밍
-    const stream = s3.getObject(params).createReadStream();
-    stream.pipe(res);
-    
-    stream.on('error', (error) => {
-      console.error('❌ [백엔드] S3 스트리밍 오류:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    if (range) {
+      // Range 요청 파싱
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      
+      console.log(`🎬 [백엔드] Range 요청: ${start}-${end}/${fileSize}`);
+      
+      // S3 Range 요청 파라미터
+      const rangeParams = {
+        ...params,
+        Range: `bytes=${start}-${end}`
+      };
+      
+      // Range 응답 헤더 설정
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Headers': 'Content-Type, Range',
+        'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges'
+      });
+      
+      // S3 Range 객체 스트리밍
+      const stream = s3.getObject(rangeParams).createReadStream();
+      stream.pipe(res);
+      
+      stream.on('error', (error) => {
+        console.error('❌ [백엔드] S3 Range 스트리밍 오류:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, error: error.message });
+        }
+      });
+      
+    } else {
+      // 전체 파일 스트리밍 (Range 요청 없음)
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': fileSize,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=31536000',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Headers': 'Content-Type, Range',
+        'Access-Control-Expose-Headers': 'Content-Range, Accept-Ranges'
+      });
+      
+      // S3 객체 스트리밍
+      const stream = s3.getObject(params).createReadStream();
+      stream.pipe(res);
+      
+      stream.on('error', (error) => {
+        console.error('❌ [백엔드] S3 스트리밍 오류:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, error: error.message });
+        }
+      });
+    }
     
     console.log(`✅ [백엔드] S3 파일 스트리밍 시작: ${s3Key}`);
     

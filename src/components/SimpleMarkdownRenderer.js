@@ -87,8 +87,7 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
   const renderContentWithMedia = (text) => {
     if (!text || !files.length) return text;
 
-    console.log('🎬 [SimpleMarkdownRenderer] 미디어 태그 처리 시작');
-    console.log('📁 [SimpleMarkdownRenderer] 사용 가능한 파일들:', files.map(f => ({ name: f.name, type: f.type, url: f.url?.substring(0, 50) + '...' })));
+    // 미디어 태그 처리 시작
 
     // 미디어 태그 패턴: [image:filename] 또는 [video:filename]
     const mediaTagPattern = /\[(image|video):([^\]]+)\]/g;
@@ -111,20 +110,22 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
       }
 
       const [fullMatch, mediaType, fileName] = match;
-      console.log(`🔍 [SimpleMarkdownRenderer] 태그 발견: ${fullMatch}, 타입: ${mediaType}, 파일명: ${fileName}`);
+      // 태그 발견
       
       // 파일 목록에서 해당 파일 찾기 (안전한 방식)
       const mediaFile = files.find(file => {
         // fileName이 undefined이거나 file.name이 undefined인 경우 처리
         if (!fileName || !file || !file.name) {
-          console.log(`⚠️ [SimpleMarkdownRenderer] 잘못된 파일 정보: fileName=${fileName}, file.name=${file?.name}`);
           return false;
         }
         
-        const nameMatch = file.name === fileName || 
-                         file.name.includes(fileName) ||
-                         fileName.includes(file.name);
-        console.log(`🔍 [SimpleMarkdownRenderer] 파일 매칭 시도: ${file.name} vs ${fileName} = ${nameMatch}`);
+        // 안전한 문자열 비교
+        const nameMatch = (file.name && fileName && fileName !== 'undefined') && (
+          file.name === fileName || 
+          file.name.includes(fileName) ||
+          fileName.includes(file.name)
+        );
+        // 파일 매칭 시도
         return nameMatch;
       });
 
@@ -137,7 +138,7 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
                           (mediaFile.url.startsWith('blob:') && mediaFile.isPermanent);
         
         if (isValidUrl) {
-          console.log(`✅ [SimpleMarkdownRenderer] 파일 매칭 성공: ${mediaFile.name}, URL: ${mediaFile.url?.substring(0, 50)}...`);
+          // 파일 매칭 성공
           parts.push({
             type: 'media',
             mediaType,
@@ -145,7 +146,7 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
             key: `media-${match.index}`
           });
         } else {
-          console.warn(`⚠️ [SimpleMarkdownRenderer] 유효하지 않은 URL: ${fileName}`, mediaFile.url);
+          // 유효하지 않은 URL
           // 유효하지 않은 URL에 대한 안내 메시지 표시
           parts.push({
             type: 'broken-media',
@@ -155,10 +156,7 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
           });
         }
       } else {
-        console.warn(`❌ [SimpleMarkdownRenderer] 파일을 찾을 수 없거나 URL이 없음: ${fileName}`);
-        console.warn(`🔍 [SimpleMarkdownRenderer] 파일 정보:`, mediaFile);
-        console.warn(`🔍 [SimpleMarkdownRenderer] 파일 URL:`, mediaFile?.url);
-        console.warn(`🔍 [SimpleMarkdownRenderer] 파일 S3키:`, mediaFile?.s3Key);
+        // 파일을 찾을 수 없음
         // 파일을 찾을 수 없으면 누락된 미디어로 표시
         parts.push({
           type: 'missing-media',
@@ -215,8 +213,23 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
 
   // 누락된 미디어 컴포넌트 렌더링
   const renderMissingMediaComponent = (mediaType, fileName) => {
-    // 해당 파일 찾기
-    const file = files.find(f => f.name === fileName || f.name.includes(fileName));
+    // fileName이 undefined이거나 null인 경우 처리
+    if (!fileName || fileName === 'undefined') {
+      // 파일명이 유효하지 않음
+      return (
+        <Paper sx={{ p: 2, m: 1, bgcolor: '#fff3cd', border: '1px solid #ffeaa7' }}>
+          <Typography color="warning.main">
+            ⚠️ 파일 정보가 손상되었습니다. 콘텐츠를 다시 편집해주세요.
+          </Typography>
+        </Paper>
+      );
+    }
+    
+    // 해당 파일 찾기 (안전한 검색)
+    const file = files.find(f => {
+      if (!f || !f.name) return false;
+      return f.name === fileName || f.name.includes(fileName);
+    });
     const isRefreshing = file?.s3Key && refreshingUrls.has(file.s3Key);
     const hasFailed = file?.s3Key && failedUrls.has(file.s3Key);
     
@@ -267,20 +280,30 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
   };
 
   const renderMediaComponent = (file, mediaType) => {
+    // file 객체가 없는 경우 안전한 처리
+    if (!file) {
+      // 파일 객체가 undefined
+      return (
+        <Paper sx={{ p: 2, m: 1, bgcolor: '#fff3cd', border: '1px solid #ffeaa7' }}>
+          <Typography color="warning.main">
+            ⚠️ 파일 정보가 손상되었습니다. 콘텐츠를 다시 편집해주세요.
+          </Typography>
+        </Paper>
+      );
+    }
+    
     if (mediaType === 'image') {
-      console.log(`🖼️ [SimpleMarkdownRenderer] 이미지 컴포넌트 렌더링: ${file.name}, URL: ${file.url?.substring(0, 50)}...`);
+      // 이미지 컴포넌트 렌더링
       
       // URL이 없거나 유효하지 않은 경우 오류 메시지 표시
       if (!file.url || file.url.trim() === '') {
-        console.error(`❌ [SimpleMarkdownRenderer] 이미지 URL이 없음: ${file.name}`);
+        // 이미지 URL이 없음
         return (
           <Card sx={{ maxWidth: '100%', my: 2, p: 2, textAlign: 'center', backgroundColor: '#fff3cd' }}>
             <Typography variant="body2" color="warning.main">
               ⚠️ 이미지 파일을 불러올 수 없습니다
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              파일명: {file.name}
-            </Typography>
+
             <Typography variant="caption" display="block" color="text.secondary">
               브라우저를 재시작한 후 파일이 사라졌을 수 있습니다. 콘텐츠를 수정하여 파일을 다시 업로드해주세요.
             </Typography>
@@ -303,17 +326,12 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
               borderRadius: '4px'
             }}
             onClick={() => handleImageClick(file)}
-            onLoad={() => console.log(`✅ [SimpleMarkdownRenderer] 이미지 로드 성공: ${file.name}`)}
-            onError={(e) => {
-              console.error(`❌ [SimpleMarkdownRenderer] 이미지 로드 실패: ${file.name}`, e);
-              console.error(`❌ [SimpleMarkdownRenderer] 이미지 URL: ${file.url}`);
-              handleMediaError(file, e);
-            }}
+            onError={(e) => handleMediaError(file, e)}
           />
         </Box>
       );
     } else if (mediaType === 'video') {
-      console.log(`🎥 [SimpleMarkdownRenderer] 비디오 컴포넌트 렌더링: ${file.name}, URL: ${file.url?.substring(0, 50)}...`);
+      // 비디오 컴포넌트 렌더링
       return (
         <Card sx={{ maxWidth: '100%', my: 2 }}>
           <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 aspect ratio */ }}>
@@ -323,28 +341,43 @@ const SimpleMarkdownRenderer = ({ content, files = [] }) => {
               height="100%"
               style={{ position: 'absolute', top: 0, left: 0, backgroundColor: '#000' }}
               controls
-              preload="metadata"
+              preload="auto"
               controlsList="nodownload"
-              onError={(e) => {
-                console.error('❌ [SimpleMarkdownRenderer] 비디오 로드 실패:', file.name, e);
-                console.error('❌ [SimpleMarkdownRenderer] 비디오 URL:', file.url);
-                handleMediaError(file, e);
-              }}
+              crossOrigin="anonymous"
+              playsInline
+              onError={(e) => handleMediaError(file, e)}
               onLoadStart={() => {
-                console.log('🎬 [SimpleMarkdownRenderer] 비디오 로드 시작:', file.name);
+                // 비디오 로드 시작
               }}
-              onLoadedMetadata={() => {
-                console.log('✅ [SimpleMarkdownRenderer] 비디오 메타데이터 로드 완료:', file.name);
+              onCanPlay={(e) => {
+                // 비디오가 재생 가능할 때 시킹 활성화
+                const video = e.target;
+                if (video.readyState >= 2) {
+                  // 시킹 가능 상태로 설정
+                  video.setAttribute('data-seeking-enabled', 'true');
+                }
+              }}
+              onLoadedMetadata={(e) => {
+                // 메타데이터 로드 완료 시 시킹 준비
+                const video = e.target;
+                if (video.duration && video.duration > 0) {
+                  // 시킹 가능 상태로 설정
+                  video.setAttribute('data-seeking-ready', 'true');
+                }
+              }}
+              onProgress={(e) => {
+                // 비디오 다운로드 진행 상황 업데이트
+                const video = e.target;
+                if (video.buffered.length > 0) {
+                  // 버퍼링된 부분에서 시킹 가능
+                  video.setAttribute('data-buffered', 'true');
+                }
               }}
             >
               브라우저가 비디오를 지원하지 않습니다.
             </video>
           </Box>
-          <Box sx={{ p: 1, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              📹 {file.name}
-            </Typography>
-          </Box>
+
         </Card>
       );
     }

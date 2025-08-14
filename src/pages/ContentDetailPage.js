@@ -203,7 +203,7 @@ const ContentDetailPage = () => {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h6" align="center">
-          콘텐츠를 불러오는 중... (디버깅 중)
+          콘텐츠를 불러오는 중...
         </Typography>
       </Container>
     );
